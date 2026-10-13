@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="detail-head">
+  <div>
+    <a class="back" href="{{ url_for('index') }}">← Voltar</a>
+    <div class="eyebrow">IP MONITORADO</div>
+    <h1>{{ item.ip }}</h1>
+    <p>{{ item.description or "Sem descrição" }}</p>
+  </div>
+  <div class="actions">
+    {% if item.enabled %}<form method="post" action="{{ url_for('check_now', ip_id=item.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn primary">Solicitar nova verificação</button></form>{% endif %}
+    {% if user %}<a class="btn" href="{{ url_for('edit_ip', ip_id=item.id) }}">Editar</a>{% endif %}
+  </div>
+</div>
+
+{% if not user and item.enabled %}<p class="public-check-hint">Visitantes podem solicitar uma nova verificação pelo botão acima. Limite: uma solicitação por IP a cada 2 minutos.</p>{% endif %}
+
+{% if last %}
+<div class="status-box {{ 'listed' if effective_status=='LISTED' else ('error' if effective_status=='ERROR' else 'clean') }}">
+  <div><span class="bigstatus">{% if effective_status=='CLEAN' %}● CLEAN{% elif effective_status=='LISTED' %}● LISTED{% elif effective_status=='IGNORED' %}● IGNORADO{% elif effective_status=='NO_ALERT' %}● SEM ALERTAS{% else %}● ERRO{% endif %}</span>
+  <small>{{ last.checked_at|br_datetime }} · {% if last.check_type == 'RETRY' %}Tentativa individual: {{ last.retry_zone }}{% else %}Verificação completa{% endif %} · Status de alertas atualizado conforme configurações atuais</small></div>
+  <div class="metrics"><b>{{ active_alerts }}</b><span>alertas ativos</span>
+    {% if ignored_alerts %}<b>{{ ignored_alerts }}</b><span>ignorados/desativados</span>{% endif %}
+    <b>{{ last.total_rbls }}</b><span>RBLs consultadas</span></div>
+</div>
+{% if ignored_alerts or effective_status == 'NO_ALERT' %}
+<p class="alert-hint">As respostas DNS históricas continuam visíveis abaixo. Encerrar ou ignorar um alerta não significa que o IP foi removido da RBL.</p>
+{% endif %}
+
+<div class="panel">
+  <div class="panel-head"><h2>Identidade DNS — rDNS / FCrDNS</h2></div>
+  {% if dns_identity %}
+  <div class="dns-identity-grid">
+    <section class="dns-identity-section">
+      <div class="dns-identity-title"><strong>rDNS (registro PTR)</strong>
+        <span class="badge {{ 'ok' if dns_identity.rdns_status=='PASS' else ('neutral' if dns_identity.rdns_status=='MISSING' else 'warn') }}">{{ {'PASS':'ENCONTRADO','MISSING':'SEM PTR','TIMEOUT':'TIMEOUT','ERROR':'ERRO'}.get(dns_identity.rdns_status, dns_identity.rdns_status) }}</span>
+      </div>
+      <div class="dns-identity-label">Nome(s) retornado(s)</div>
+      <div class="dns-identity-value">{{ dns_identity.ptr_names or '—' }}</div>
+      <p class="dns-identity-description">{{ dns_identity.rdns_details }}</p>
+    </section>
+    <section class="dns-identity-section">
+      <div class="dns-identity-title"><strong>FCrDNS (confirmação A/AAAA)</strong>
+        <span class="badge {{ 'ok' if dns_identity.fcrdns_status=='PASS' else ('bad' if dns_identity.fcrdns_status=='FAIL' else ('neutral' if dns_identity.fcrdns_status=='NOT_AVAILABLE' else 'warn')) }}">{{ {'PASS':'CONFIRMADO','FAIL':'NÃO CONFIRMADO','NOT_AVAILABLE':'NÃO APLICÁVEL','ERROR':'ERRO'}.get(dns_identity.fcrdns_status, dns_identity.fcrdns_status) }}</span>
+      </div>
+      <div class="dns-identity-label">Resolução direta e comparação com {{ item.ip }}</div>
+      <div class="dns-identity-value">{{ dns_identity.forward_addresses or '—' }}</div>
+      <p class="dns-identity-description">{{ dns_identity.fcrdns_details }}</p>
+    </section>
+  </div>
+  <div class="dns-identity-footer">rDNS/FCrDNS consultados em {{ dns_identity_checked_at|br_datetime }} · {{ dns_identity.duration_ms }} ms{% if last.check_type == 'RETRY' %} · Não repetidos na tentativa individual{% endif %}</div>
+  {% else %}<div class="dns-identity-empty">Esta verificação é anterior à funcionalidade rDNS/FCrDNS. Solicite uma nova verificação para exibir os resultados.</div>{% endif %}
+</div>
+
+<div class="panel">
+  <div class="panel-head"><h2>Resultados das RBLs</h2></div>
+  {% if last.check_type == 'RETRY' %}
+  <p class="retry-context">Última ação: nova tentativa de <strong>{{ last.retry_zone }}</strong>. As demais respostas foram preservadas, com suas datas originais de consulta.</p>
+  {% endif %}
+  <div class="table-wrap"><table class="responses-table">
+  <thead><tr><th>RBL</th><th>Status</th><th>Resposta</th><th>Tempo</th></tr></thead>
+  <tbody>{% for r in results %}
+    <tr>
+      <td><strong>{{ r.rbl_name }}</strong><br><small>{{ r.rbl_zone }}</small>{% if delisting_url(r.rbl_zone) %}<br><a class="link" href="{{ delisting_url(r.rbl_zone) }}" target="_blank" rel="noopener noreferrer">Consulta / delisting ↗</a>{% endif %}</td>
+      <td>{% if r.status=="CLEAN" %}<span class="badge ok">CLEAN</span>{% elif r.status=="LISTED" %}<span class="badge bad">LISTED</span>{% else %}<span class="badge warn">{{ r.status }}</span>{% endif %}
+      {% if not r.rbl_enabled %}<div class="badge-explain">RBL desativada</div>{% elif r.ignored %}<div class="badge-explain">Alerta ignorado</div>{% endif %}</td>
+      <td class="response-cell"><code class="response-text">{{ r.response or "—" }}</code>
+        <small class="rbl-result-date">Consultado: {{ (r.checked_at or last.checked_at)|br_datetime }}</small>
+        {% if item.enabled and r.rbl_enabled and r.status in retryable_statuses %}
+        <form method="post" action="{{ url_for('retry_rbl_now', ip_id=item.id, result_id=r.id) }}" class="rbl-retry-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn rbl-retry-button">↻ Tentar novamente só esta RBL</button>
+        </form>
+        {% endif %}
+      </td><td>{{ r.duration_ms }} ms</td>
+    </tr>
+  {% endfor %}</tbody>
+  </table></div>
+</div>
+{% else %}
+<div class="empty panel"><h3>Ainda não há verificações</h3><p>Execute a primeira verificação para começar o histórico.</p></div>
+{% endif %}
+
+<div class="panel">
+  <div class="panel-head"><h2>Histórico</h2></div>
+  <div class="table-wrap"><table>
+  <thead><tr><th>Data</th><th>Tipo</th><th>Status</th><th>Listados</th><th>Erros</th><th>RBLs</th><th>Duração</th></tr></thead>
+  <tbody>{% for c in checks %}
+    <tr><td>{{ c.checked_at|br_datetime }}</td><td>{% if c.check_type == 'RETRY' %}<small class="retry-history-type">Retry: {{ c.retry_zone }}</small>{% else %}<small>Completa</small>{% endif %}</td><td>{% if c.status=="CLEAN" %}<span class="badge ok">CLEAN</span>{% elif c.status=="LISTED" %}<span class="badge bad">LISTED</span>{% else %}<span class="badge warn">ERROR</span>{% endif %}</td><td>{{ c.listed_count }}</td><td>{{ c.error_count }}</td><td>{{ c.total_rbls }}</td><td>{{ c.duration_ms }} ms</td></tr>
+  {% endfor %}</tbody>
+  </table></div>
+</div>
+
+<div class="panel incidents-panel">
+  <div class="panel-head"><h2>Episódios de bloqueio</h2></div>
+  {% for incident in incidents %}
+  <article class="incident-entry">
+    <div class="incident-header">
+      <div class="incident-heading"><strong>{{ incident.rbl_name }}</strong>
+      {% if delisting_url(incident.rbl_zone) %}<a class="link" href="{{ delisting_url(incident.rbl_zone) }}" target="_blank" rel="noopener noreferrer">Consulta / delisting ↗</a>{% endif %}</div>
+      {% if incident.cleared_at %}
+        {% if incident.closure_reason == 'MANUAL' %}<span class="badge neutral">ENCERRADO MANUALMENTE</span>
+        {% elif incident.closure_reason == 'DISABLED' %}<span class="badge neutral">RBL DESATIVADA</span>
+        {% else %}<span class="badge ok">REMOVIDO</span>{% endif %}
+      {% elif not incident.rbl_enabled %}<span class="badge neutral">RBL DESATIVADA</span>
+      {% elif incident.ignored %}<span class="badge neutral">IGNORADO</span>
+      {% else %}<span class="badge bad">ATIVO</span>{% endif %}
+    </div>
+    <div class="incident-meta-grid">
+      <div><span class="label">Detectado</span><div>{{ incident.detected_at|br_datetime }}</div></div>
+      <div><span class="label">Última confirmação</span><div>{{ incident.last_seen_at|br_datetime }}</div></div>
+      <div><span class="label">Encerramento do episódio</span><div class="incident-date-value">
+        {% if incident.closure_reason == 'MANUAL' %}{{ incident.cleared_at|br_datetime }} — encerrado manualmente, sem confirmar delisting
+        {% elif incident.closure_reason == 'DISABLED' %}{{ incident.cleared_at|br_datetime }} — RBL desativada, sem confirmar delisting
+        {% elif incident.cleared_at %}{{ incident.cleared_at|br_datetime }} — saída confirmada pela consulta
+        {% elif incident.ignored %}Ignorado para este IP (ainda listado na última confirmação)
+        {% else %}Ainda listado / sem remoção confirmada{% endif %}</div></div>
+    </div>
+    {% if user and user.is_admin %}
+    <div class="incident-controls">
+      {% if incident.ignored %}
+      <form method="post" action="{{ url_for('incident_unignore', incident_id=incident.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn" type="submit">Voltar a alertar neste IP</button>
+      </form>
+      {% else %}
+      <form method="post" action="{{ url_for('incident_ignore', incident_id=incident.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn" type="submit">Ignorar esta RBL neste IP</button>
+      </form>
+      {% endif %}
+      {% if not incident.cleared_at and not incident.ignored and incident.rbl_enabled %}
+      <form method="post" action="{{ url_for('incident_dismiss', incident_id=incident.id) }}"
+          onsubmit="return confirm('Encerrar este alerta sem confirmar a remoção da RBL? Se continuar listado, uma nova verificação poderá abrir outro alerta.')">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn" type="submit">Encerrar alerta agora</button>
+      </form>
+      {% endif %}
+    </div>
+    {% endif %}
+    <div class="incident-notes-full">
+      <span class="label">Observações</span>
+      {% if user %}
+      <form method="post" action="{{ url_for('incident_note', incident_id=incident.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <textarea name="observation" rows="5" maxlength="10000" aria-label="Observação do bloqueio em {{ incident.rbl_name }}">{{ incident.observation }}</textarea>
+        <button class="btn" type="submit">Salvar observação</button>
+      </form>
+      {% else %}<div class="incident-note-readable">{{ incident.observation or '—' }}</div>{% endif %}
+    </div>
+  </article>
+  {% else %}<div class="dns-identity-empty">Nenhum bloqueio registrado.</div>{% endfor %}
+</div>
+{% if user %}<div class="danger-zone">
+<form method="post" action="{{ url_for('delete_ip', ip_id=item.id) }}" onsubmit="return confirm('Remover este IP e todo o histórico?')">
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+<button class="btn danger">Remover IP e histórico</button>
+</form>
+</div>{% endif %}
+{% endblock %}

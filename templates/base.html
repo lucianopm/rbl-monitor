@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RBL Monitor</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<header>
+  <div class="wrap nav">
+    <a class="brand" href="{{ url_for('index') }}">RBL <span>MONITOR</span></a>
+    <div class="nav-actions">
+      {% if user %}
+      <a href="{{ url_for('new_ip') }}" class="btn primary">+ Adicionar IP</a>
+      <form method="post" action="{{ url_for('check_all') }}" style="display:inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn" type="submit">Verificar todos</button>
+      </form>
+      {% if user.is_admin %}<a class="btn" href="{{ url_for('settings') }}">Configurações</a><a class="btn" href="{{ url_for('smtp_settings') }}">SMTP e alertas</a><a class="btn" href="{{ url_for('users') }}">Usuários</a><a class="btn" href="{{ url_for('rbls') }}">RBLs</a>{% endif %}
+      <a class="btn" href="{{ url_for('account') }}">Minha senha</a>
+      <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn">Sair</button></form>
+      {% else %}<a class="btn" href="{{ url_for('login') }}">Entrar</a>{% endif %}
+    </div>
+  </div>
+</header>
+<main class="wrap">
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% for category, message in messages %}
+    <div class="flash {{ category }}">{{ message }}</div>
+  {% endfor %}
+{% endwith %}
+{% block content %}{% endblock %}
+</main>
+<footer><div class="wrap">RBL Monitor · Horários em {{ timezone_name }}</div></footer>
+</body>
+</html>

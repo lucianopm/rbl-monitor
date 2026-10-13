@@ -1,0 +1,53 @@
+# Manual de uso — RBL Monitor
+
+## Acesso e níveis
+
+A página inicial e os detalhes dos IPs podem ser consultados por visitantes. Um visitante também pode solicitar nova verificação de um IP ativo ou uma nova tentativa de uma RBL com erro. Esses pedidos estão protegidos por CSRF e limitados por frequência (global e por IP). Operações de cadastro, configuração e administração exigem autenticação. As opções de ignorar/encerrar alertas exigem administrador.
+
+## Painel de IPs
+
+1. Faça login e clique em **Adicionar IP**.
+2. Informe IPv4/IPv6 e uma descrição; é possível adicionar vários IPs pelas ações em lote.
+3. Use a busca e os filtros para localizar IPs por situação e habilitação.
+4. **Detalhes** mostra a última verificação, resultados individuais, histórico de episódios de bloqueio e rDNS/FCrDNS.
+5. **Verificar novamente** força a consulta completa das RBLs habilitadas mais os testes de identidade DNS.
+
+**Status operacionais:** `LISTED` significa incidente ativo de RBL habilitada e não ignorada; `IGNORADO` representa listagens silenciadas; `SEM ALERTAS` indica resultado DNS anterior listado, mas sem incidente operacional aberto; `CLEAN` significa ausência de listagem confirmada, e `ERRO` representa falhas na verificação. Status de DNS podem não corresponder exatamente ao status operacional de alerta.
+
+## rDNS / FCrDNS
+
+- **rDNS:** busca os PTRs que correspondem ao IP monitorado.
+- **FCrDNS:** consulta os registros A (IPv4) ou AAAA (IPv6) dos nomes PTR e verifica se algum resolve para o IP original.
+- A ausência de PTR não comprova abuso; um FCrDNS que não fecha pode indicar configuração de DNS inconsistente.
+- Resultados e detalhes ficam na página do IP; uma tentativa isolada de RBL reaproveita a última identidade DNS, não faz novo teste PTR.
+
+## RBLs e tratamento de erros
+
+Em **RBLs**, selecione as listas habilitadas, configure eventual suporte IPv6 e os links de delisting; salve tudo no botão único. Chaves de SpamRATS e Spamhaus DQS são opcionais, dependendo das listas usadas. As chaves digitadas não reaparecem no formulário.
+
+`TIMEOUT`, `SERVFAIL`, `REFUSED`, `DNS_ERROR` e outros erros não são listagem confirmada. Se uma consulta isolada falhar, clique **Tentar novamente só esta RBL** nos detalhes: o sistema consulta apenas aquela lista para aquele IP e registra um novo snapshot com os horários originais das demais listas. O botão só aparece para consultas elegíveis e listas ainda habilitadas.
+
+- Spamhaus ZEN: `127.255.255.254` indica problema de acesso via resolvedor e não presença na lista; considere DQS ou um resolvedor apropriado.
+- APEWS Level 2 começa desabilitada devido a falhas recorrentes de resolução DNS.
+- UCEPROTECT Level 3 pode produzir indicadores amplos por ASN; desative-a globalmente ou ignore-a apenas no IP relevante.
+
+## Histórico e alertas
+
+Em cada IP, os episódios de listagem guardam detecção, última confirmação, encerramento, motivo e observação. As observações longas usam quebra de linha; o histórico não é apagado ao silenciar.
+
+- **Encerrar alerta agora:** fecha o episódio atual. Um novo teste ainda listado pode criar um novo episódio.
+- **Ignorar esta RBL neste IP:** silencia alertas e e-mails para aquele par IP/RBL, sem falsificar o resultado DNS.
+- **Voltar a alertar:** remove a regra de silêncio.
+- **Desabilitar uma RBL globalmente:** encerra os alertas operacionais dessa RBL para todos os IPs; histórico permanece.
+
+## Alertas SMTP
+
+Entre em **SMTP e alertas** como administrador. Configure host/IP, porta, STARTTLS ou SSL/TLS, usuário, senha, remetente, destinatários e ativação. Salve e utilize **Enviar e-mail de teste**. Para trocar a senha, preencha uma nova; deixar vazio mantém a anterior. Para remover, use a opção específica.
+
+O sistema cria uma notificação quando abre um incidente novo em RBL habilitada e não ignorada. Não envia uma mensagem idêntica a cada rechecagem do mesmo episódio. E-mails pendentes que se tornarem irrelevantes por desativação ou ignore deixam de ser enviados. Em caso de falha SMTP, o motivo simplificado é registrado, e há nova tentativa nas rotinas de processamento.
+
+**Atenção:** senhas SMTP e chaves de provedores são armazenadas no SQLite local. Restrinja o acesso a `data/`, aos backups e à rede do painel.
+
+## Configuração de monitoramento
+
+Em **Configurações**, ajuste o intervalo em minutos e o timeout DNS. Consultas dependem da conectividade externa, do resolvedor em uso e das regras de cada serviço DNSBL. A opção `check_on_start` em `config.json` controla se há uma varredura ao iniciar o serviço.

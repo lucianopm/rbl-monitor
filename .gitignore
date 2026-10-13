@@ -1,0 +1,39 @@
+# Credenciais e parâmetros locais
+.env
+.env.*
+!.env.example
+.git-update.conf
+.git-version
+.update.lock
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Bancos, dados e backups
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+data/
+backups/
+*.bak
+*.backup
+
+# Python, runtime e desenvolvimento
+.venv/
+.venv.next/
+.venv.previous/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+*.log
+
+# Arquivos locais de IDE e sistema
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

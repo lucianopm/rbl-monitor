@@ -1,0 +1,151 @@
+[
+  {
+    "name": "Spamhaus ZEN",
+    "zone": "zen.spamhaus.org",
+    "enabled": true
+  },
+  {
+    "name": "Barracuda Reputation Block List",
+    "zone": "b.barracudacentral.org",
+    "enabled": true
+  },
+  {
+    "name": "SpamCop Blocking List",
+    "zone": "bl.spamcop.net",
+    "enabled": true
+  },
+  {
+    "name": "UCEPROTECT Level 1",
+    "zone": "dnsbl-1.uceprotect.net",
+    "enabled": true
+  },
+  {
+    "name": "UCEPROTECT Level 2",
+    "zone": "dnsbl-2.uceprotect.net",
+    "enabled": true
+  },
+  {
+    "name": "UCEPROTECT Level 3",
+    "zone": "dnsbl-3.uceprotect.net",
+    "enabled": true
+  },
+  {
+    "name": "Mailspike",
+    "zone": "bl.mailspike.net",
+    "enabled": true
+  },
+  {
+    "name": "Spam Eating Monkey",
+    "zone": "bl.spameatingmonkey.net",
+    "enabled": true
+  },
+  {
+    "name": "Backscatterer",
+    "zone": "ips.backscatterer.org",
+    "enabled": true
+  },
+  {
+    "name": "Blocklist.de",
+    "zone": "bl.blocklist.de",
+    "enabled": true
+  },
+  {
+    "name": "JustSpam",
+    "zone": "dnsbl.justspam.org",
+    "enabled": true
+  },
+  {
+    "name": "0spam",
+    "zone": "bl.0spam.org",
+    "enabled": true
+  },
+  {
+    "name": "PSBL",
+    "zone": "psbl.surriel.com",
+    "enabled": true
+  },
+  {
+    "name": "S5H",
+    "zone": "all.s5h.net",
+    "enabled": true
+  },
+  {
+    "name": "SpamRATS - Spam",
+    "zone": "spam.spamrats.com",
+    "enabled": false,
+    "requires_api_key": true
+  },
+  {
+    "name": "SpamRATS - Dynamic",
+    "zone": "dyna.spamrats.com",
+    "enabled": false,
+    "requires_api_key": true
+  },
+  {
+    "name": "SpamRATS - Auth",
+    "zone": "auth.spamrats.com",
+    "enabled": false,
+    "requires_api_key": true
+  },
+  {
+    "name": "SpamRATS - NoPTR",
+    "zone": "noptr.spamrats.com",
+    "enabled": false,
+    "requires_api_key": true
+  },
+  {
+    "name": "Truncate / GBUdb",
+    "zone": "truncate.gbudb.net",
+    "enabled": true
+  },
+  {
+    "name": "DroneBL",
+    "zone": "dnsbl.dronebl.org",
+    "enabled": true
+  },
+  {
+    "name": "SPFBL",
+    "zone": "dnsbl.spfbl.net",
+    "enabled": true
+  },
+  {
+    "name": "InterServer",
+    "zone": "rbl.interserver.net",
+    "enabled": true
+  },
+  {
+    "name": "NordSpam",
+    "zone": "bl.nordspam.com",
+    "enabled": true
+  },
+  {
+    "name": "Scientific Spam",
+    "zone": "bl.scientificspam.net",
+    "enabled": true
+  },
+  {
+    "name": "Anonymous Mail",
+    "zone": "spam.dnsbl.anonmails.de",
+    "enabled": true
+  },
+  {
+    "name": "APEWS Level 2",
+    "zone": "l2.apews.org",
+    "enabled": false
+  },
+  {
+    "name": "Spam Sources Fabel",
+    "zone": "spamsources.fabel.dk",
+    "enabled": true
+  },
+  {
+    "name": "SpamRBL IMP",
+    "zone": "spamrbl.imp.ch",
+    "enabled": true
+  },
+  {
+    "name": "WormRBL IMP",
+    "zone": "wormrbl.imp.ch",
+    "enabled": true
+  }
+]

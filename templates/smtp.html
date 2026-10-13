@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="settings-head">
+  <div>
+    <a class="back" href="{{ url_for('settings') }}">← Configurações</a>
+    <div class="eyebrow">ADMINISTRAÇÃO</div>
+    <h1>SMTP e alertas</h1>
+    <p>Configuração do servidor de saída e dos avisos de novas listagens.</p>
+  </div>
+</div>
+
+<form action="{{ url_for('smtp_settings') }}" method="post" autocomplete="off" class="smtp-page">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="panel smtp-panel">
+    <div class="panel-head"><h2>Servidor SMTP</h2></div>
+    <div class="smtp-form-grid">
+      <label class="smtp-span-2">Servidor (IP ou hostname)
+        <input name="smtp_host" type="text" maxlength="253" value="{{ smtp.host }}" placeholder="smtp.interno.local ou 192.168.1.10" required autocomplete="off">
+      </label>
+      <label>Porta
+        <input name="smtp_port" type="number" min="1" max="65535" value="{{ smtp.port }}" required>
+      </label>
+      <label>Segurança da conexão
+        <select name="smtp_security" required>
+          <option value="starttls" {% if smtp.security == 'starttls' %}selected{% endif %}>STARTTLS (geralmente 587)</option>
+          <option value="ssl" {% if smtp.security == 'ssl' %}selected{% endif %}>SSL/TLS direto (geralmente 465)</option>
+          <option value="none" {% if smtp.security == 'none' %}selected{% endif %}>Sem TLS (somente rede interna confiável)</option>
+        </select>
+      </label>
+      <label>Usuário SMTP (se necessário)
+        <input name="smtp_username" type="text" maxlength="254" value="{{ smtp.username }}" autocomplete="off" placeholder="monitor@empresa.local">
+      </label>
+      <label>Senha SMTP
+        <input name="smtp_password" type="password" maxlength="1024" value="" autocomplete="new-password" placeholder="{% if password_configured %}Já configurada — deixe vazio para manter{% else %}Informe caso o servidor exija{% endif %}">
+        <span class="field-hint">{% if password_configured %}Senha armazenada. Digite outra para substituir.{% else %}Nenhuma senha armazenada.{% endif %} Ela não é exibida nesta página.</span>
+        <span class="smtp-checkbox-line"><input type="checkbox" name="clear_smtp_password" value="1"> Remover a senha configurada</span>
+      </label>
+      <label class="smtp-span-2">E-mail do remetente
+        <input name="smtp_from" type="email" maxlength="254" value="{{ smtp.sender }}" placeholder="rbl-monitor@empresa.local" required>
+      </label>
+    </div>
+  </div>
+
+  <div class="panel smtp-panel">
+    <div class="panel-head"><h2>Alertas de bloqueio</h2></div>
+    <div class="smtp-form-grid">
+      <label class="smtp-span-2 smtp-switch">
+        <input type="checkbox" name="alert_enabled" value="1" {% if alerts_active %}checked{% endif %}>
+        <span>Ativar envio automático de alertas</span>
+      </label>
+      <p class="smtp-span-2 smtp-explainer">Um e-mail é colocado na fila quando o IP é detectado pela primeira vez em uma RBL. Não é repetido a cada consulta enquanto o bloqueio continuar ativo.</p>
+      <label class="smtp-span-2">Destinatários
+        <textarea name="recipients" rows="4" placeholder="noc@empresa.local, suporte@empresa.local">{{ recipients }}</textarea>
+        <span class="field-hint">Separe os endereços por vírgula, ponto e vírgula ou quebra de linha.</span>
+      </label>
+    </div>
+  </div>
+  <div class="smtp-actions">
+    <button type="submit" class="btn primary">Salvar SMTP e alertas</button>
+    <span>Salve antes de enviar um teste.</span>
+  </div>
+</form>
+<div class="panel smtp-test-panel">
+  <div class="panel-head"><h2>Teste de envio</h2></div>
+  <div class="smtp-test-content">
+    <div>
+      <strong>{{ pending }} alerta(s) pendente(s) de envio</strong>
+      <p>O teste usa as informações já salvas e envia uma mensagem aos destinatários configurados. Não altera a fila dos alertas.</p>
+    </div>
+    <form method="post" action="{{ url_for('test_email') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <button type="submit" class="btn">Enviar e-mail de teste</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

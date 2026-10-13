@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="form-panel">
+  <div class="eyebrow">{{ "EDITAR IP" if item else "NOVO IP" }}</div>
+  <h1>{{ "Editar IP" if item else "Adicionar IP" }}</h1>
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>IP
+      <input name="ip" value="{{ item.ip if item else '' }}" placeholder="203.0.113.10" required>
+    </label>
+    <label>Descrição
+      <input name="description" value="{{ item.description if item else '' }}" placeholder="Mail Server Produção">
+    </label>
+    {% if item %}
+    <label class="check"><input type="checkbox" name="enabled" {% if item.enabled %}checked{% endif %}> Monitoramento ativo</label>
+    {% endif %}
+    <div class="form-actions">
+      <a class="btn" href="{{ url_for('index') }}">Cancelar</a>
+      <button class="btn primary" type="submit">Salvar</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

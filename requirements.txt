@@ -1,0 +1,5 @@
+Flask>=3.0,<4
+dnspython>=2.6,<3
+Flask-WTF>=1.2.2,<2
+gunicorn>=23,<24
+tzdata>=2024.1

@@ -1,0 +1,8 @@
+{
+  "host": "0.0.0.0",
+  "port": 8080,
+  "check_interval_hours": 24,
+  "check_on_start": false,
+  "max_concurrent_rbls": 20,
+  "dns_timeout_seconds": 4
+}

@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="detail-head rbl-page-head"><div>
+  <h1>Configurações de RBLs</h1>
+  <p>Ative as listas, ajuste links e configure as chaves. Salve todas as alterações de uma vez.</p>
+</div></div>
+
+<form method="post" action="{{ url_for('rbls') }}" class="rbl-config-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="action" value="save_all">
+  <section class="panel rbl-key-panel">
+    <div class="panel-head"><h2>Credenciais de consulta</h2></div>
+    <div class="key-grid">
+      <div class="key-item">
+        <div class="key-title"><strong>SpamRATS</strong><span class="badge {{ 'ok' if spamrats_configured else 'warn' }}">{{ 'Configurada' if spamrats_configured else 'Não configurada' }}</span></div>
+        <p>Chave obrigatória para consultar as zonas SpamRATS. <a class="link" href="https://spamrats.com/" target="_blank" rel="noopener noreferrer">Solicitar chave ↗</a></p>
+        <label>Chave de API<input type="password" name="spamrats_api_key" autocomplete="new-password" placeholder="Deixe vazio para manter a atual"></label>
+        <label class="check small-check"><input type="checkbox" name="remove_spamrats_api_key"> Remover chave salva</label>
+      </div>
+      <div class="key-item">
+        <div class="key-title"><strong>Spamhaus DQS</strong><span class="badge {{ 'ok' if spamhaus_configured else 'neutral' }}">{{ 'Configurada' if spamhaus_configured else 'Opcional' }}</span></div>
+        <p>Permite consultar a ZEN sem depender do espelho público, sujeito à sua modalidade de acesso. <a class="link" href="https://www.spamhaus.com/" target="_blank" rel="noopener noreferrer">Obter DQS ↗</a></p>
+        <label>Chave DQS<input type="password" name="spamhaus_dqs_key" autocomplete="new-password" placeholder="Deixe vazio para manter a atual"></label>
+        <label class="check small-check"><input type="checkbox" name="remove_spamhaus_dqs_key"> Remover chave salva</label>
+      </div>
+    </div>
+    <p class="rbl-hint">As chaves são mantidas no banco local, não reaparecem nos formulários e nunca são mostradas em logs de consulta.</p>
+  </section>
+
+  <section class="panel rbl-list-panel">
+    <div class="panel-head"><div><h2>Listas configuradas</h2><p class="panel-subtitle">{{ rbls|length }} listas disponíveis · Uma única gravação para todas</p></div></div>
+    <div class="table-wrap"><table class="rbl-table">
+      <colgroup><col style="width:29%"><col style="width:45%"><col style="width:13%"><col style="width:13%"></colgroup>
+      <thead><tr><th>RBL</th><th>Link público de consulta / delisting</th><th>Ativa</th><th>IPv6</th></tr></thead>
+      <tbody>{% for rbl in rbls %}
+      <tr>
+        <td class="rbl-name-cell"><input type="hidden" name="rbl_zone" value="{{ rbl.zone }}"><strong>{{ rbl.name }}</strong><small>{{ rbl.zone }}</small>{% if rbl.zone == 'l2.apews.org' %}<small class="rbl-caution">Serviço instável · recomendado desativar</small>{% endif %}</td>
+        <td><input type="url" name="rbl_link:{{ rbl.zone }}" aria-label="Link para {{ rbl.name }}" value="{{ delisting_url(rbl.zone) }}" placeholder="https://..." maxlength="1000"></td>
+        <td class="rbl-toggle"><label class="check"><input type="checkbox" name="rbl_enabled:{{ rbl.zone }}" {% if rbl.enabled %}checked{% endif %} aria-label="Ativar {{ rbl.name }}"></label></td>
+        <td class="rbl-toggle"><label class="check"><input type="checkbox" name="rbl_ipv6:{{ rbl.zone }}" {% if rbl.supports_ipv6 %}checked{% endif %} aria-label="Habilitar IPv6 na {{ rbl.name }}"></label></td>
+      </tr>{% endfor %}</tbody>
+    </table></div>
+  </section>
+  <div class="rbl-save-bar"><span>Ao desativar uma RBL, seus alertas ativos são encerrados automaticamente em todos os IPs, preservando o histórico.</span><button class="btn primary" type="submit">Salvar todas as configurações</button></div>
+</form>
+
+<section class="form-panel rbl-add-panel"><h2>Adicionar nova RBL</h2>
+<form method="post" action="{{ url_for('rbls') }}">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="action" value="add">
+  <label>Nome<input name="name" maxlength="120" required></label>
+  <label>Zona DNS<input name="zone" required placeholder="exemplo.dnsbl.net"></label>
+  <button class="btn" type="submit">Adicionar RBL</button>
+</form></section>
+{% endblock %}
