@@ -10,13 +10,14 @@
 - Porta TCP 8080 disponível; ajuste com `--port 8090` se necessário.
 - Firewall liberando a porta apenas para sua rede interna/VPN; evitar exposição pública.
 
-## 2. Extrair o ZIP
+## 2. Baixar e extrair o ZIP
 
-Faça upload do arquivo `rbl-monitor-consolidado.zip` ao servidor e, em um diretório temporário ou de trabalho, rode:
+Baixe o arquivo `rbl-monitor-consolidado.zip` anexado ao [release mais recente](https://github.com/lucianopm/rbl-monitor/releases/latest). Use esse pacote, que contém a pasta `rbl-monitor/`. No servidor, em um diretório de trabalho, rode:
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y unzip
+sudo apt-get install -y unzip curl
+curl -fL https://github.com/lucianopm/rbl-monitor/releases/latest/download/rbl-monitor-consolidado.zip -o rbl-monitor-consolidado.zip
 unzip rbl-monitor-consolidado.zip
 cd rbl-monitor
 ```
