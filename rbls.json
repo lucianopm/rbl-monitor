@@ -2,7 +2,7 @@
   {
     "name": "Spamhaus ZEN",
     "zone": "zen.spamhaus.org",
-    "enabled": true
+    "enabled": false
   },
   {
     "name": "Barracuda Reputation Block List",

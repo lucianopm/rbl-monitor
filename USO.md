@@ -27,7 +27,7 @@ Em **RBLs**, selecione as listas habilitadas, configure eventual suporte IPv6 e 
 
 `TIMEOUT`, `SERVFAIL`, `REFUSED`, `DNS_ERROR` e outros erros não são listagem confirmada. Se uma consulta isolada falhar, clique **Tentar novamente só esta RBL** nos detalhes: o sistema consulta apenas aquela lista para aquele IP e registra um novo snapshot com os horários originais das demais listas. O botão só aparece para consultas elegíveis e listas ainda habilitadas.
 
-- Spamhaus ZEN: `127.255.255.254` indica problema de acesso via resolvedor e não presença na lista; considere DQS ou um resolvedor apropriado.
+- Spamhaus ZEN vem desabilitada por padrão. Para usar DQS, configure sua chave no painel RBLs antes de habilitar a lista. `127.255.255.254` indica problema de acesso via resolvedor e não presença na lista.
 - APEWS Level 2 começa desabilitada devido a falhas recorrentes de resolução DNS.
 - UCEPROTECT Level 3 pode produzir indicadores amplos por ASN; desative-a globalmente ou ignore-a apenas no IP relevante.
 
