@@ -73,6 +73,32 @@ class MonitorTests(unittest.TestCase):
         for name in monitor.app.jinja_env.list_templates():
             monitor.app.jinja_env.get_template(name)
 
+    def test_independent_event_pagination_keeps_latest_results(self):
+        from flask import template_rendered
+        captured = []
+        def capture(sender, template, context, **extra):
+            captured.append(context)
+        with monitor.db() as conn:
+            for _ in range(31):
+                conn.execute('INSERT INTO checks(ip_id,checked_at,status) VALUES (?,?,?)',
+                             (self.ip_id, monitor.now(), 'CLEAN'))
+                conn.execute('INSERT INTO incidents(ip_id,rbl_zone,rbl_name,detected_at,last_seen_at,cleared_at) VALUES (?,?,?,?,?,?)',
+                             (self.ip_id, 'bl.spamcop.net', 'Test', monitor.now(), monitor.now(), monitor.now()))
+            latest = conn.execute('SELECT MAX(id) FROM checks').fetchone()[0]
+        conn.close()
+        with template_rendered.connected_to(capture, monitor.app):
+            response = self.client.get(f'/ip/{self.ip_id}?history_page=2&incident_page=3&expand=history')
+        self.assertEqual(response.status_code, 200)
+        context = captured[0]
+        self.assertEqual(len(context['checks']), 15)
+        self.assertEqual(len(context['incidents']), 1)
+        self.assertEqual(context['last']['id'], latest)
+        self.assertEqual(context['history_pager']['pages'], 3)
+        self.assertIn('id="history" open', response.get_data(as_text=True))
+        html = self.client.get(f'/ip/{self.ip_id}').get_data(as_text=True)
+        self.assertNotIn('id="history" open', html)
+        self.assertNotIn('id="incidents" open', html)
+
     def test_admin_pages_render(self):
         with self.client.session_transaction() as session:
             session['user_id'] = 1

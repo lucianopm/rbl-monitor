@@ -81,18 +81,26 @@
 <div class="empty panel"><h3>Ainda não há verificações</h3><p>Execute a primeira verificação para começar o histórico.</p></div>
 {% endif %}
 
-<div class="panel">
-  <div class="panel-head"><h2>Histórico</h2></div>
+{% macro pager(info, parameter, section) %}
+<nav class="event-pagination" aria-label="Paginação de {{ section }}">
+  {% if info.page > 1 %}<a class="btn" href="{{ url_for('ip_detail', ip_id=item.id, history_page=info.page-1 if parameter == 'history_page' else history_pager.page, incident_page=info.page-1 if parameter == 'incident_page' else incident_pager.page, expand=section, _anchor=section) }}">← Anterior</a>{% endif %}
+  <span>Página {{ info.page }} de {{ info.pages }} · {{ info.total }} evento(s)</span>
+  {% if info.page < info.pages %}<a class="btn" href="{{ url_for('ip_detail', ip_id=item.id, history_page=info.page+1 if parameter == 'history_page' else history_pager.page, incident_page=info.page+1 if parameter == 'incident_page' else incident_pager.page, expand=section, _anchor=section) }}">Próxima →</a>{% endif %}
+</nav>
+{% endmacro %}
+<details class="panel event-panel" id="history" {% if request.args.get('expand') == 'history' %}open{% endif %}>
+  <summary class="panel-head"><h2>Histórico <small>({{ history_pager.total }})</small></h2><span class="expand-hint">Expandir / recolher</span></summary>
   <div class="table-wrap"><table>
   <thead><tr><th>Data</th><th>Tipo</th><th>Status</th><th>Listados</th><th>Erros</th><th>RBLs</th><th>Duração</th></tr></thead>
   <tbody>{% for c in checks %}
     <tr><td>{{ c.checked_at|br_datetime }}</td><td>{% if c.check_type == 'RETRY' %}<small class="retry-history-type">Retry: {{ c.retry_zone }}</small>{% else %}<small>Completa</small>{% endif %}</td><td>{% if c.status=="CLEAN" %}<span class="badge ok">CLEAN</span>{% elif c.status=="LISTED" %}<span class="badge bad">LISTED</span>{% else %}<span class="badge warn">ERROR</span>{% endif %}</td><td>{{ c.listed_count }}</td><td>{{ c.error_count }}</td><td>{{ c.total_rbls }}</td><td>{{ c.duration_ms }} ms</td></tr>
-  {% endfor %}</tbody>
+  {% else %}<tr><td colspan="7">Nenhuma verificação registrada.</td></tr>{% endfor %}</tbody>
   </table></div>
-</div>
+  {{ pager(history_pager, 'history_page', 'history') }}
+</details>
 
-<div class="panel incidents-panel">
-  <div class="panel-head"><h2>Episódios de bloqueio</h2></div>
+<details class="panel incidents-panel event-panel" id="incidents" {% if request.args.get('expand') == 'incidents' %}open{% endif %}>
+  <summary class="panel-head"><h2>Episódios de bloqueio <small>({{ incident_pager.total }})</small></h2><span class="expand-hint">Expandir / recolher</span></summary>
   {% for incident in incidents %}
   <article class="incident-entry">
     <div class="incident-header">
@@ -150,7 +158,8 @@
     </div>
   </article>
   {% else %}<div class="dns-identity-empty">Nenhum bloqueio registrado.</div>{% endfor %}
-</div>
+  {{ pager(incident_pager, 'incident_page', 'incidents') }}
+</details>
 {% if user %}<div class="danger-zone">
 <form method="post" action="{{ url_for('delete_ip', ip_id=item.id) }}" onsubmit="return confirm('Remover este IP e todo o histórico?')">
 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

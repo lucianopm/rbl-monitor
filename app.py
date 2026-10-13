@@ -802,8 +802,16 @@ def ip_detail(ip_id):
     if not item:
         conn.close()
         return "IP não encontrado", 404
-    checks = conn.execute("SELECT * FROM checks WHERE ip_id=? ORDER BY id DESC LIMIT 100", (ip_id,)).fetchall()
-    last = checks[0] if checks else None
+    def pagination(table, parameter):
+        total = conn.execute(f"SELECT COUNT(*) FROM {table} WHERE ip_id=?", (ip_id,)).fetchone()[0]
+        pages = max(1, (total + 14) // 15)
+        page = max(1, min(pages, request.args.get(parameter, 1, type=int) or 1))
+        return {"page": page, "pages": pages, "total": total}
+    history_pager = pagination("checks", "history_page")
+    incident_pager = pagination("incidents", "incident_page")
+    checks = conn.execute("SELECT * FROM checks WHERE ip_id=? ORDER BY id DESC LIMIT 15 OFFSET ?",
+                          (ip_id, (history_pager["page"] - 1) * 15)).fetchall()
+    last = conn.execute("SELECT * FROM checks WHERE ip_id=? ORDER BY id DESC LIMIT 1", (ip_id,)).fetchone()
     enabled = enabled_rbl_zones(conn)
     ignored = {r[0] for r in conn.execute("SELECT rbl_zone FROM incident_ignores WHERE ip_id=?", (ip_id,)).fetchall()}
     results = []
@@ -816,7 +824,8 @@ def ip_detail(ip_id):
     dns_identity = conn.execute("SELECT * FROM dns_identity_results WHERE check_id=?", (last["id"],)).fetchone() if last else None
     full_check = conn.execute("SELECT checked_at FROM checks WHERE ip_id=? AND check_type='FULL' ORDER BY id DESC LIMIT 1", (ip_id,)).fetchone()
     dns_identity_checked_at = full_check["checked_at"] if full_check else None
-    incidents = [dict(r) for r in conn.execute("SELECT * FROM incidents WHERE ip_id=? ORDER BY id DESC", (ip_id,)).fetchall()]
+    incidents = [dict(r) for r in conn.execute("SELECT * FROM incidents WHERE ip_id=? ORDER BY id DESC LIMIT 15 OFFSET ?",
+                  (ip_id, (incident_pager["page"] - 1) * 15)).fetchall()]
     for incident in incidents:
         incident["ignored"] = incident["rbl_zone"] in ignored
         incident["rbl_enabled"] = incident["rbl_zone"] in enabled
@@ -827,7 +836,8 @@ def ip_detail(ip_id):
                            incidents=incidents, dns_identity=dns_identity, effective_status=effective_status,
                            active_alerts=counts["active"], ignored_alerts=counts["ignored"],
                            retryable_statuses=RETRYABLE_RBL_STATUSES,
-                           dns_identity_checked_at=dns_identity_checked_at)
+                           dns_identity_checked_at=dns_identity_checked_at,
+                           history_pager=history_pager, incident_pager=incident_pager)
 
 @app.post("/ip/<int:ip_id>/rbl/<int:result_id>/retry")
 def retry_rbl_now(ip_id, result_id):
