@@ -21,7 +21,7 @@ Os testes incluem somente dados sintéticos, IP de documentação e valores expl
 3. `.env` contém o segredo de assinatura de sessão. `data/monitor.db` pode conter senhas de SMTP e chaves de provedores em texto claro (configurações administrativas), além de endereços de e-mail e IPs. Proteja os diretórios e backups.
 4. O painel exige autenticação para alterações administrativas. Revise senhas, privilégios e logs de acesso antes de produção.
 5. Configure URLs remotas do atualizador somente para repositórios **confiáveis**. O Git fornece arquivos executáveis para o serviço, e publicar um commit malicioso pode comprometer a VM.
-6. `.gitignore` impede inclusões comuns por acidente, mas **não impede `git add -f`**. Antes de cada push, verifique `git status` e `git diff --cached`.
+6. Mantenha `.env`, banco, backups e credenciais somente no servidor; não envie esses arquivos ao repositório. `.gitignore` ajuda a evitar inclusões acidentais.
 7. O atualizador faz backups locais antes de aplicar mudanças; mantenha cópias externas e teste restauração.
 
 ## Limites da validação

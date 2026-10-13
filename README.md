@@ -40,10 +40,10 @@ sudo bash install.sh
 
 Acesse `http://IP_DO_SERVIDOR:8080/login`. O script exibe a senha inicial `admin` uma única vez.
 
-**Atualizar uma instalação existente a partir do GitHub (após publicar o repositório):**
+**Buscar a versão mais atual no GitHub para atualizar uma instalação existente:**
 
 ```bash
-sudo bash /opt/rbl-monitor/update.sh --repo https://github.com/ORGANIZACAO/rbl-monitor.git --branch main
+sudo bash /opt/rbl-monitor/update.sh --repo https://github.com/lucianopm/rbl-monitor.git --branch main
 ```
 
 Use `update.sh` para atualizar. O instalador recusa instalações existentes para preservar banco, usuários e histórico.
@@ -54,7 +54,7 @@ Use `update.sh` para atualizar. O instalador recusa instalações existentes par
 |---|---|
 | [INSTALACAO.md](INSTALACAO.md) | Preparação do Linux, instalação limpa, chaves, verificação e erros comuns |
 | [USO.md](USO.md) | Cadastro de IPs, RBLs, retry, status, SMTP, rDNS/FCrDNS e permissões |
-| [ATUALIZACAO_GIT.md](ATUALIZACAO_GIT.md) | Publicação no GitHub, configuração da origem, atualizações, backup e recuperação |
+| [ATUALIZACAO_GIT.md](ATUALIZACAO_GIT.md) | Busca da versão atual, configuração da origem, atualizações, backup e recuperação |
 | [SEGURANCA.md](SEGURANCA.md) | Auditoria do pacote, arquivos sensíveis, acesso interno e cuidados operacionais |
 | [TROUBLESHOOTING.md](TROUBLESHOOTING.md) | DNS, SMTP, SQLite, HTTPS, serviço e recuperação |
 | [VALIDACAO.md](VALIDACAO.md) | Testes realizados e limitações desta entrega |

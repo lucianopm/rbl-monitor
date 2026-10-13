@@ -1,32 +1,14 @@
 # Atualização por Git — sem reinstalação
 
-O `update.sh` está incluído na versão consolidada. Ele permite atualizar **após** você criar e publicar um repositório Git contendo estes mesmos arquivos. Ainda não há repositório remoto configurado no pacote.
+O GitHub é a fonte para obter a versão mais atual do RBL Monitor. O `update.sh` busca o código de [lucianopm/rbl-monitor](https://github.com/lucianopm/rbl-monitor), preservando os dados e configurações locais. O repositório público pode ser consultado sem conta ou token.
 
-## 1. Publicar o primeiro código no GitHub
+## 1. Atualizar servidor já instalado
 
-No seu computador, descompacte o ZIP. Dentro de `rbl-monitor/`, verifique o `.gitignore` e execute:
-
-```bash
-git init
-git add .
-git status --short
-git commit -m "RBL Monitor: versão consolidada"
-git branch -M main
-git remote add origin https://github.com/ORGANIZACAO/rbl-monitor.git
-git push -u origin main
-```
-
-Crie o repositório vazio no GitHub antes do push. Troque `ORGANIZACAO/rbl-monitor` pelo caminho correto. **Não adicione** `.env`, `data/`, backups, `.venv` ou credenciais reais. A pasta do ZIP é uma distribuição limpa, não contém dados de clientes.
-
-Se o repositório for privado, configure as credenciais de leitura Git para o usuário `root` do servidor (preferencialmente uma chave SSH de deploy read-only). O atualizador não solicita nem armazena tokens no código.
-
-## 2. Atualizar servidor já instalado
-
-Primeira execução, informando o endereço do futuro repositório:
+Na primeira execução, configure a origem oficial:
 
 ```bash
 sudo bash /opt/rbl-monitor/update.sh \
-  --repo https://github.com/ORGANIZACAO/rbl-monitor.git \
+  --repo https://github.com/lucianopm/rbl-monitor.git \
   --branch main
 ```
 
@@ -42,7 +24,7 @@ Em automações sem terminal interativo, use `--yes` **somente se confiar no rep
 sudo bash /opt/rbl-monitor/update.sh --yes
 ```
 
-O pacote inclui agendamento opcional. Depois de publicar o repositório e concluir uma atualização manual com sucesso, habilite:
+O pacote inclui agendamento opcional. Depois de concluir uma atualização manual com sucesso, habilite:
 
 ```bash
 sudo bash /opt/rbl-monitor/enable-auto-update.sh
@@ -52,7 +34,7 @@ sudo journalctl -u rbl-monitor-update.service -n 100 --no-pager
 
 O timer roda diariamente às 04h no fuso do servidor, com atraso aleatório de até 15 minutos. O serviço usa root e instala a branch configurada: restrinja quem pode publicar nela. Para desabilitar: `sudo bash /opt/rbl-monitor/enable-auto-update.sh --disable`. O timer não é ativado pelo instalador. Faça backup externo e teste em homologação antes de habilitar.
 
-## 3. O que o script faz
+## 2. O que o script faz
 
 1. Obtém a branch configurada em um diretório temporário usando `git clone`.
 2. Confere arquivos obrigatórios, sintaxe Python/JSON/Bash e rejeita links simbólicos e arquivos sensíveis versionados.
@@ -64,7 +46,7 @@ O timer roda diariamente às 04h no fuso do servidor, com atraso aleatório de a
 
 As mudanças feitas pelo painel ficam no SQLite e são preservadas. `config.json` e `rbls.json` locais também são preservados para evitar perder personalizações. Se o repositório trouxer alterações nesses dois arquivos, revise e aplique-as manualmente quando necessário.
 
-## 4. Comandos de conferência
+## 3. Comandos de conferência
 
 ```bash
 sudo systemctl status rbl-monitor --no-pager
