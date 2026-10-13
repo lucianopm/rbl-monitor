@@ -77,6 +77,8 @@ O argumento `--yes` é aceito por compatibilidade e não permite sobrescrever in
 
 Não copie `.env`, `data/` nem `backups/` para GitHub. Não modifique diretamente dados no SQLite enquanto o serviço estiver rodando.
 
+Código, templates, scripts e ambiente Python pertencem a `root:rblmonitor` (leitura/execução pelo serviço, sem permissão de alterar código). `data/` pertence a `rblmonitor:rblmonitor`, com modo 0700. `.env` permanece `root:root`, modo 0600: o systemd lê esse arquivo antes de iniciar o processo como `rblmonitor`. Backups também são restritos ao root. Não execute `chown -R rblmonitor:rblmonitor /opt/rbl-monitor`, pois permitiria ao serviço alterar scripts que o atualizador executa como root.
+
 ## 6. Testar e diagnosticar
 
 ```bash

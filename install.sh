@@ -153,7 +153,8 @@ NoNewPrivileges=true
 WantedBy=multi-user.target
 EOF
 # SQLite precisa criar arquivos -wal e -shm junto ao banco principal.
-chown -R root:root "$APP_DIR"
+chown -R "root:$APP_USER" "$APP_DIR"
+chown root:root "$APP_DIR/.env"
 chown -R "$APP_USER:$APP_USER" "$APP_DIR/data"
 chmod 0700 "$APP_DIR/data"
 chmod 0600 "$APP_DIR/.env"

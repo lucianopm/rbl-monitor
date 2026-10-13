@@ -5,7 +5,7 @@ set -Eeuo pipefail
 umask 077
 APP_DIR=/opt/rbl-monitor
 SERVICE=rbl-monitor.service
-REPO_URL=''
+REPO_URL='https://github.com/lucianopm/rbl-monitor.git'
 BRANCH=main
 REPO_ARG=0
 BRANCH_ARG=0
@@ -24,14 +24,15 @@ fail() { printf 'ERRO: %s\n' "$*" >&2; exit 1; }
 usage() {
  cat <<'HELP'
 Uso: sudo bash /opt/rbl-monitor/update.sh --repo URL [--branch main] [--yes]
-     sudo bash /opt/rbl-monitor/update.sh [--yes]   # após configurar URL
+     sudo bash /opt/rbl-monitor/update.sh [--yes]   # origem oficial por padrão
 
 Busca uma versão do Git em um diretório temporário, valida seus arquivos,
 prepara as dependências em outro virtualenv, cria backup e atualiza os arquivos
 mantendo banco, senhas e configurações. Reinicia o serviço, valida /health e
 tenta reverter o código/dependências se houver falha.
 
-O endereço do repositório e a branch ficam em /opt/rbl-monitor/.git-update.conf.
+Por padrão usa https://github.com/lucianopm/rbl-monitor.git (main).
+Uma origem salva em .git-update.conf ou --repo pode substituir esse padrão.
 Os backups ficam em /opt/rbl-monitor/backups (recomenda-se cópia externa).
 Somente execute com repositórios Git de origem confiável.
 HELP
@@ -70,7 +71,7 @@ if [[ -f "$CONFIG" ]]; then
     esac
   done < "$CONFIG"
 fi
-[[ -n "$REPO_URL" ]] || fail 'Informe --repo URL na primeira execução.'
+[[ -n "$REPO_URL" ]] || REPO_URL='https://github.com/lucianopm/rbl-monitor.git'
 [[ "$REPO_URL" != *$'\n'* && "$REPO_URL" != *$'\r'* ]] || fail 'URL inválida.'
 [[ "$BRANCH" =~ ^[[:alnum:]_.-]{1,120}$ && "$BRANCH" != -* ]] || fail 'Branch inválida.'
 [[ "$REPO_URL" == https://* || "$REPO_URL" == ssh://* || "$REPO_URL" == git@* || "$REPO_URL" == /* ]] || fail 'Use HTTPS, SSH ou caminho Git local confiável.'
@@ -231,7 +232,7 @@ for file in "${updated[@]}"; do
  chmod 0755 "$(dirname "$target")"
  mode=0644
  case "$file" in *.sh) mode=0755;; esac
- install -m "$mode" -- "$TMP/repo/$file" "$target.next-file"
+ install -o root -g rblmonitor -m "$mode" -- "$TMP/repo/$file" "$target.next-file"
  mv -f -- "$target.next-file" "$target"
 done
 mv -- "$APP_DIR/.venv" "$APP_DIR/.venv.previous"
@@ -239,7 +240,10 @@ SWAPPED_VENV=1
 mv -- "$NEXT" "$APP_DIR/.venv"
 # Reforça permissões do banco. Apenas data/ precisa ser gravável pelo usuário do serviço.
 chown -R rblmonitor:rblmonitor "$APP_DIR/data"
-chown -R root:root "$APP_DIR/.venv" 2>/dev/null || true
+chown -R root:rblmonitor "$APP_DIR/.venv" "$APP_DIR/templates" "$APP_DIR/static"
+chown root:rblmonitor "$APP_DIR" "$APP_DIR/config.json" "$APP_DIR/rbls.json" "$APP_DIR/rbl-monitor.service"
+chown root:root "$APP_DIR/.env" "$BACKUP_DIR"
+chmod 0600 "$APP_DIR/.env"
 
 log 'Iniciando serviço e verificando /health'
 systemctl restart "$SERVICE"

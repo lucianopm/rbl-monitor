@@ -4,7 +4,13 @@ O GitHub é a fonte para obter a versão mais atual do RBL Monitor. O `update.sh
 
 ## 1. Atualizar servidor já instalado
 
-Na primeira execução, configure a origem oficial:
+O repositório oficial e a branch `main` são usados por padrão, inclusive na primeira execução:
+
+```bash
+sudo bash /opt/rbl-monitor/update.sh
+```
+
+Para informar explicitamente a origem ou substituir uma configuração anterior:
 
 ```bash
 sudo bash /opt/rbl-monitor/update.sh \
