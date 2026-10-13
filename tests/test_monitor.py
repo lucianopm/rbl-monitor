@@ -42,6 +42,33 @@ class MonitorTests(unittest.TestCase):
     def test_csrf_enforced(self):
         self.assertEqual(self.client.post(f'/ip/{self.ip_id}/check').status_code, 400)
 
+    def test_dashboard_counts_errors_even_when_listed(self):
+        from flask import template_rendered
+        captured = []
+        def capture(sender, template, context, **extra):
+            captured.append(context)
+        with monitor.db() as conn:
+            conn.execute('INSERT INTO checks(ip_id,checked_at,status,error_count) VALUES (?,?,?,1)',
+                         (self.ip_id, monitor.now(), 'LISTED'))
+            ext.record_incidents(conn, self.ip_id, monitor.now(), [self.result()])
+        conn.close()
+        with template_rendered.connected_to(capture, monitor.app):
+            self.assertEqual(self.client.get('/').status_code, 200)
+        self.assertEqual(captured[0]['stats']['errors'], 1)
+        self.assertEqual(captured[0]['stats']['listed'], 1)
+        self.assertEqual(captured[0]['stats']['clean'], 0)
+
+    def test_dashboard_counts_identity_failure(self):
+        with monitor.db() as conn:
+            cur = conn.execute('INSERT INTO checks(ip_id,checked_at,status) VALUES (?,?,?)',
+                               (self.ip_id, monitor.now(), 'CLEAN'))
+            conn.execute('INSERT INTO dns_identity_results(check_id,rdns_status,fcrdns_status) VALUES (?,?,?)',
+                         (cur.lastrowid, 'PASS', 'FAIL'))
+        conn.close()
+        html = self.client.get('/').get_data(as_text=True)
+        self.assertIn('data-error="1"', html)
+        self.assertIn('data-healthy="0"', html)
+
     def test_all_templates_compile(self):
         for name in monitor.app.jinja_env.list_templates():
             monitor.app.jinja_env.get_template(name)

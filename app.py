@@ -609,12 +609,20 @@ def index():
         row["listed_count"] = state["active"]
         row["ignored_count"] = state["ignored"]
         row["status"] = operational_status(row["check_status"], state["active"], state["ignored"])
+        row["has_error"] = bool(row["checked_at"] and (
+            row["error_count"] or row["check_status"] == "ERROR"
+            or row["rdns_status"] in {"ERROR", "TIMEOUT", "MISSING"}
+            or row["fcrdns_status"] in {"ERROR", "TIMEOUT", "FAIL"}))
+        row["without_alerts"] = bool(row["checked_at"] and not row["has_error"]
+                                      and row["status"] in {"CLEAN", "IGNORED", "NO_ALERT"})
         rows.append(row)
     stats = {
         "total": len(rows),
         "active": sum(1 for r in rows if r["enabled"]),
         "listed": sum(1 for r in rows if r["status"] == "LISTED"),
-        "clean": sum(1 for r in rows if r["checked_at"] and r["status"] in {"CLEAN", "IGNORED", "NO_ALERT"}),
+        "clean": sum(r["without_alerts"] for r in rows),
+        "errors": sum(r["has_error"] for r in rows),
+        "pending": sum(not r["checked_at"] for r in rows),
     }
     conn.close()
     return render_template("index.html", rows=rows, stats=stats)

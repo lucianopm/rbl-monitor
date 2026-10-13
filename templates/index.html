@@ -9,11 +9,14 @@
 </section>
 
 <div class="cards">
-  <div class="card"><div class="label">IPs cadastrados</div><div class="value">{{ stats.total }}</div></div>
-  <div class="card"><div class="label">Ativos</div><div class="value">{{ stats.active }}</div></div>
-  <div class="card"><div class="label">Sem alertas</div><div class="value ok">{{ stats.clean }}</div></div>
-  <div class="card"><div class="label">Listed</div><div class="value bad">{{ stats.listed }}</div></div>
+  <button type="button" class="card summary-card" data-summary="ALL"><span class="label">IPs cadastrados</span><span class="value">{{ stats.total }}</span><small>Todos os endereços</small></button>
+  <button type="button" class="card summary-card" data-summary="ACTIVE"><span class="label">Monitoramento ativo</span><span class="value">{{ stats.active }}</span><small>Habilitados para consulta</small></button>
+  <button type="button" class="card summary-card" data-summary="HEALTHY"><span class="label">Sem alertas ou erros</span><span class="value ok">{{ stats.clean }}</span><small>Verificados sem pendências técnicas</small></button>
+  <button type="button" class="card summary-card" data-summary="LISTED"><span class="label">Listados em RBL</span><span class="value bad">{{ stats.listed }}</span><small>Com alertas ativos de listagem</small></button>
+  <button type="button" class="card summary-card" data-summary="ERROR"><span class="label">Com erros</span><span class="value warn">{{ stats.errors }}</span><small>Falhas de consulta, rDNS ou FCrDNS</small></button>
+  <button type="button" class="card summary-card" data-summary="NEVER"><span class="label">Não verificados</span><span class="value">{{ stats.pending }}</span><small>Aguardando a primeira consulta</small></button>
 </div>
+<p class="summary-hint">Clique em um indicador para filtrar os IPs. Um IP listado também pode ter erros; falhas de consulta não confirmam uma listagem. Os totais incluem IPs inativos e refletem a última verificação.</p>
 
 {% if user %}<div class="panel bulk-panel">
   <div class="panel-head">
@@ -55,11 +58,12 @@
       </div>
       <select id="statusFilter" aria-label="Filtrar por status">
         <option value="ALL">Todos os status</option>
+        <option value="HEALTHY">Sem alertas ou erros</option>
         <option value="CLEAN">Clean</option>
         <option value="NO_ALERT">Sem alertas (encerrados)</option>
         <option value="IGNORED">Ignorados</option>
         <option value="LISTED">Listed</option>
-        <option value="ERROR">Erro</option>
+        <option value="ERROR">Com erros (RBL / rDNS / FCrDNS)</option>
         <option value="NEVER">Não verificado</option>
       </select>
       <select id="enabledFilter" aria-label="Filtrar por estado">
@@ -87,6 +91,8 @@
             data-ip="{{ r.ip|lower }}"
             data-description="{{ (r.description or '')|lower }}"
             data-status="{{ r.status or 'NEVER' }}"
+            data-error="{{ '1' if r.has_error else '0' }}"
+            data-healthy="{{ '1' if r.without_alerts else '0' }}"
             data-enabled="{{ 'ACTIVE' if r.enabled else 'INACTIVE' }}"
             data-listed="{{ r.listed_count if r.checked_at else -1 }}"
             data-checked="{{ r.checked_at or '' }}">
@@ -94,6 +100,7 @@
           <td><a class="ip" href="{{ url_for('ip_detail', ip_id=r.id) }}">{{ r.ip }}</a></td>
           <td>{{ r.description or "—" }}</td>
           <td>
+            {% if r.has_error and r.status != 'ERROR' %}<span class="badge warn">COM ERROS</span>{% endif %}
             {% if not r.checked_at %}<span class="badge neutral">NÃO VERIFICADO</span>
             {% elif r.status == "CLEAN" %}<span class="badge ok">● CLEAN</span>
             {% elif r.status == "LISTED" %}<span class="badge bad">● LISTED</span>
@@ -124,6 +131,17 @@
 <script>
 (function () {
   const rows = Array.from(document.querySelectorAll('.ip-row'));
+  document.querySelectorAll('[data-summary]').forEach(card => {
+    card.addEventListener('click', () => {
+      if (!status || !enabled) return;
+      search.value = '';
+      enabled.value = card.dataset.summary === 'ACTIVE' ? 'ACTIVE' : 'ALL';
+      status.value = card.dataset.summary === 'ACTIVE' ? 'ALL' : card.dataset.summary;
+      applyFilters();
+      document.getElementById('ipsTable')?.scrollIntoView({behavior: 'smooth', block: 'start'});
+      status.focus({preventScroll: true});
+    });
+  });
   const search = document.getElementById('ipSearch');
   const status = document.getElementById('statusFilter');
   const enabled = document.getElementById('enabledFilter');
@@ -157,7 +175,10 @@
 
     rows.forEach(row => {
       const matchesSearch = !q || row.dataset.ip.includes(q) || row.dataset.description.includes(q);
-      const matchesStatus = statusValue === 'ALL' || row.dataset.status === statusValue;
+      const matchesStatus = statusValue === 'ALL'
+        || (statusValue === 'ERROR' ? row.dataset.error === '1'
+          : statusValue === 'HEALTHY' ? row.dataset.healthy === '1'
+          : row.dataset.status === statusValue);
       const matchesEnabled = enabledValue === 'ALL' || row.dataset.enabled === enabledValue;
       const show = matchesSearch && matchesStatus && matchesEnabled;
       row.classList.toggle('filtered-out', !show);
