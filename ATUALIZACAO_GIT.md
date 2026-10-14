@@ -40,6 +40,19 @@ sudo journalctl -u rbl-monitor-update.service -n 100 --no-pager
 
 O timer roda diariamente às 04h no fuso do servidor, com atraso aleatório de até 15 minutos. O serviço usa root e instala a branch configurada: restrinja quem pode publicar nela. Para desabilitar: `sudo bash /opt/rbl-monitor/enable-auto-update.sh --disable`. O timer não é ativado pelo instalador. Faça backup externo e teste em homologação antes de habilitar.
 
+## Selecionar ou trocar o canal
+
+```bash
+# Produção / estável
+sudo bash /opt/rbl-monitor/update.sh --main
+# Homologação / desenvolvimento
+sudo bash /opt/rbl-monitor/update.sh --dev
+```
+
+Também aceita `--branch main` ou `--branch dev`. O canal escolhido é gravado em `.git-update.conf` após sucesso. Sem argumento, a atualização usa o canal salvo ou main na primeira execução. O timer automático segue essa configuração: ao trocar para dev, suas próximas execuções também usarão dev. Cada troca usa os mesmos backups, verificação e tentativa de rollback.
+
+`dev` pode receber mudanças ainda não homologadas. Retornar a main troca o código e dependências, mas não desfaz automaticamente migrações já concluídas em dev; confira compatibilidade e use um backup conhecido se necessário. Use dev preferencialmente em uma instalação de teste separada. Personalizações em `config.json` e `rbls.json` continuam preservadas em ambos os canais. Portanto, a alteração do padrão da Spamhaus ZEN não desativa a lista automaticamente em instalações antigas: faça isso pelo painel.
+
 ## 2. O que o script faz
 
 1. Obtém a branch configurada em um diretório temporário usando `git clone`.

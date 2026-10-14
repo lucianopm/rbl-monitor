@@ -1,5 +1,9 @@
 # Validação da entrega — 13/10/2026
 
+## Atualização v1.1.0
+
+18 testes automatizados passaram na versão atual, incluindo paginação independente dos eventos, preservação da última verificação e recuperação de senha com preservação de dados. Sintaxe JavaScript do painel e Bash dos scripts conferidas. A seleção main/dev utiliza o mesmo fluxo de backup/rollback e salva o canal após sucesso. Troca completa de canal, timer e instalação Linux não foram executados neste ambiente; exigem homologação. Este relatório mantém abaixo o registro da consolidação inicial.
+
 ## Origem e consolidação
 
 Base: `rbl-monitor-consolidado (7).zip`, SHA-256

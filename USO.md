@@ -6,6 +6,10 @@ A página inicial e os detalhes dos IPs podem ser consultados por visitantes. Um
 
 ## Painel de IPs
 
+O painel abre ordenado por LISTED, ERRO e CLEAN, seguidos dos demais estados. Os indicadores filtram a tabela; “Com erros” também inclui problemas de rDNS/FCrDNS, mesmo se houver listagem ativa. “Sem alertas ou erros” exclui falhas técnicas. Um IP pode entrar simultaneamente nas contagens de listagem e erro.
+
+Selecione 10, 20 ou 50 IPs por página (padrão 10). Busca, filtros, mudança de tamanho e ordenação retornam à primeira página. A seleção em lote fica restrita à página visível e é limpa ao ocultar itens. Histórico e episódios nos detalhes começam recolhidos: clique no título para expandir. Cada seção possui paginação independente de 15 eventos, do mais recente para o mais antigo.
+
 1. Faça login e clique em **Adicionar IP**.
 2. Informe IPv4/IPv6 e uma descrição; é possível adicionar vários IPs pelas ações em lote.
 3. Use a busca e os filtros para localizar IPs por situação e habilitação.

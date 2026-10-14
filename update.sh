@@ -25,6 +25,8 @@ usage() {
  cat <<'HELP'
 Uso: sudo bash /opt/rbl-monitor/update.sh --repo URL [--branch main] [--yes]
      sudo bash /opt/rbl-monitor/update.sh [--yes]   # origem oficial por padrão
+     sudo bash /opt/rbl-monitor/update.sh --main   # versão estável
+     sudo bash /opt/rbl-monitor/update.sh --dev    # desenvolvimento
 
 Busca uma versão do Git em um diretório temporário, valida seus arquivos,
 prepara as dependências em outro virtualenv, cria backup e atualiza os arquivos
@@ -41,6 +43,8 @@ while (($#)); do
  case "$1" in
    --repo) (($# >= 2)) || fail 'Faltou URL para --repo'; REPO_URL="$2"; REPO_ARG=1; shift 2;;
    --branch) (($# >= 2)) || fail 'Faltou branch para --branch'; BRANCH="$2"; BRANCH_ARG=1; shift 2;;
+   --main) BRANCH=main; BRANCH_ARG=1; shift;;
+   --dev) BRANCH=dev; BRANCH_ARG=1; shift;;
    --yes) YES=1; shift;;
    -h|--help) usage; exit 0;;
    *) fail "Parâmetro desconhecido: $1";;
@@ -74,6 +78,10 @@ fi
 [[ -n "$REPO_URL" ]] || REPO_URL='https://github.com/lucianopm/rbl-monitor.git'
 [[ "$REPO_URL" != *$'\n'* && "$REPO_URL" != *$'\r'* ]] || fail 'URL inválida.'
 [[ "$BRANCH" =~ ^[[:alnum:]_.-]{1,120}$ && "$BRANCH" != -* ]] || fail 'Branch inválida.'
+[[ "$BRANCH" == main || "$BRANCH" == dev ]] || fail 'Escolha --main ou --dev (ou --branch main|dev).'
+if [[ "$BRANCH" == dev ]]; then
+ log 'Canal dev: versão de desenvolvimento. Recomenda-se usar em homologação.'
+fi
 [[ "$REPO_URL" == https://* || "$REPO_URL" == ssh://* || "$REPO_URL" == git@* || "$REPO_URL" == /* ]] || fail 'Use HTTPS, SSH ou caminho Git local confiável.'
 if ((!YES)); then
  [[ -t 0 ]] || fail 'Use --yes no modo não interativo.'

@@ -4,15 +4,15 @@ Aplicação web interna (Flask + SQLite) para verificar endereços IPv4/IPv6 em 
 
 ## Funcionalidades
 
-- Dashboard com IPs, descrições, status operacional, busca/filtros, ordenação e ações em lote.
+- Dashboard com indicadores clicáveis, busca/filtros e paginação de 10, 20 ou 50 IPs. Ordem inicial: LISTED, ERRO, CLEAN e demais estados; ações em lote afetam os selecionados da página visível.
 - Cadastro, edição e exclusão de IPs; verificação automática em intervalos configuráveis e execução manual.
 - Consulta paralela de RBLs habilitadas, com classificação de `LISTED`, `CLEAN`, falhas de DNS, timeout e respostas não reconhecidas.
 - rDNS (PTR) e FCrDNS (nome PTR resolvendo de volta para o IP original), com suporte a IPv4/IPv6 na validação de identidade.
-- Detalhes por IP: resultados, respostas completas, tempos de execução, histórico de verificações, episódios de listagem e observações.
+- Detalhes por IP: resultados, respostas completas, tempos de execução e observações. Histórico e episódios ficam recolhidos e têm paginação independente de 15 eventos.
 - Tentativa individual da RBL com erro naquele IP, sem repetir as demais RBLs e sem refazer rDNS/FCrDNS. Histórico preservado.
 - Nova verificação solicitada por visitantes sem login na página de detalhes, com token CSRF e limites de frequência.
 - Administração de listas RBL: habilitação, suporte IPv6, links de delisting, chave SpamRATS e Spamhaus DQS, com salvamento conjunto.
-- Classificação das respostas de erro de acesso à Spamhaus ZEN (por exemplo, `127.255.255.254`); APEWS Level 2 desativada por padrão.
+- Spamhaus ZEN e APEWS Level 2 desativadas por padrão; configure a chave DQS antes de habilitar ZEN. Erros de acesso não são considerados listagens.
 - Gestão de alertas por IP/RBL: encerrar manualmente, ignorar, voltar a alertar; desativar uma RBL encerra os alertas operacionais associados, sem apagar o histórico.
 - Configuração SMTP por painel (servidor, porta, STARTTLS/SSL/sem TLS, autenticação, remetente, destinatários) e envio de teste.
 - Contas de usuário, administrador inicial, proteção CSRF, login e troca de senha.
@@ -50,6 +50,14 @@ sudo bash /opt/rbl-monitor/update.sh --repo https://github.com/lucianopm/rbl-mon
 ```
 
 Use `update.sh` para atualizar. O instalador recusa instalações existentes para preservar banco, usuários e histórico.
+
+Para escolher o canal: `sudo bash /opt/rbl-monitor/update.sh --main` (estável) ou `sudo bash /opt/rbl-monitor/update.sh --dev` (desenvolvimento). A escolha é salva somente após atualização bem-sucedida e usada nas próximas atualizações, inclusive automáticas. Voltar de dev para main exige conferir compatibilidade do banco; veja [ATUALIZACAO_GIT.md](ATUALIZACAO_GIT.md).
+
+Para redefinir a senha administrativa com backup:
+
+```bash
+sudo /opt/rbl-monitor/.venv/bin/python /opt/rbl-monitor/reset-admin-password.py
+```
 
 ## Documentação
 
