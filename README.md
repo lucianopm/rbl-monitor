@@ -20,6 +20,26 @@ Aplicação web interna (Flask + SQLite) para verificar endereços IPv4/IPv6 em 
 
 **Observação:** um registro LISTED é uma resposta da RBL, não um veredito universal de spam. Respostas temporárias de DNS não são consideradas listagens confirmadas. Algumas RBLs exigem acesso pago, chave ou resolvedor DNS próprio.
 
+## Capturas da interface
+
+Painel com indicadores e paginação. Os três IPs cadastrados foram ocultados usando o filtro da interface; os dados no servidor foram preservados.
+
+![Painel do RBL Monitor com IPs ocultos](docs/images/dashboard.jpg)
+
+<details>
+<summary>Configurações de monitoramento</summary>
+
+![Configurações de monitoramento](docs/images/configuracoes.jpg)
+
+</details>
+
+<details>
+<summary>SMTP e alertas — sem credenciais</summary>
+
+![Configurações SMTP sem dados privados](docs/images/smtp.jpg)
+
+</details>
+
 ## Arquitetura simples
 
 - **Servidor:** Gunicorn (uma instância worker), porta TCP **8080**, sem NGINX.
