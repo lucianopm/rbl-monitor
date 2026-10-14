@@ -35,13 +35,15 @@ Aplicação web interna (Flask + SQLite) para verificar endereços IPv4/IPv6 em 
 Baixe o ZIP do [release mais recente](https://github.com/lucianopm/rbl-monitor/releases/latest) ou use o comando abaixo. Requisitos e preparação do servidor em [INSTALACAO.md](INSTALACAO.md).
 
 ```bash
-curl -fL https://github.com/lucianopm/rbl-monitor/releases/latest/download/rbl-monitor-consolidado.zip -o rbl-monitor-consolidado.zip
-unzip rbl-monitor-consolidado.zip
+curl -fL https://github.com/lucianopm/rbl-monitor/releases/latest/download/rbl-monitor.zip -o rbl-monitor.zip
+unzip rbl-monitor.zip
 cd rbl-monitor
 sudo bash install.sh
 ```
 
 Acesse `http://IP_DO_SERVIDOR:8080/login`. O script exibe a senha inicial `admin` uma única vez.
+
+Os próximos releases usam `rbl-monitor.zip`. No release v1.1.0, o anexo ainda tem o nome antigo; baixe-o e renomeie-o para `rbl-monitor.zip` antes de seguir os comandos, ou use o comando de compatibilidade em [INSTALACAO.md](INSTALACAO.md).
 
 **Buscar a versão mais atual no GitHub para atualizar uma instalação existente:**
 

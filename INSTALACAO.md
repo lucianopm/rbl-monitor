@@ -12,17 +12,23 @@
 
 ## 2. Baixar e extrair o ZIP
 
-Baixe o arquivo `rbl-monitor-consolidado.zip` anexado ao [release mais recente](https://github.com/lucianopm/rbl-monitor/releases/latest). Use esse pacote, que contém a pasta `rbl-monitor/`. No servidor, em um diretório de trabalho, rode:
+Baixe o arquivo `rbl-monitor.zip` anexado ao [release mais recente](https://github.com/lucianopm/rbl-monitor/releases/latest). Use esse pacote, que contém a pasta `rbl-monitor/`. No servidor, em um diretório de trabalho, rode:
 
 ```bash
 sudo apt-get update
 sudo apt-get install -y unzip curl
-curl -fL https://github.com/lucianopm/rbl-monitor/releases/latest/download/rbl-monitor-consolidado.zip -o rbl-monitor-consolidado.zip
-unzip rbl-monitor-consolidado.zip
+curl -fL https://github.com/lucianopm/rbl-monitor/releases/latest/download/rbl-monitor.zip -o rbl-monitor.zip
+unzip rbl-monitor.zip
 cd rbl-monitor
 ```
 
 ## 3. Executar o instalador
+O nome `rbl-monitor.zip` será usado nos próximos releases. Para o release v1.1.0, que mantém o nome antigo, baixe com este comando e depois execute `unzip rbl-monitor.zip`:
+
+```bash
+curl -fL https://github.com/lucianopm/rbl-monitor/releases/download/v1.1.0/rbl-monitor-consolidado.zip -o rbl-monitor.zip
+```
+
 
 ```bash
 sudo bash install.sh
