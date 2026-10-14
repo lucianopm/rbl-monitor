@@ -72,6 +72,11 @@
         <option value="INACTIVE">Inativos</option>
       </select>
       <button class="btn" type="button" id="clearFilters">Limpar filtros</button>
+      <select id="pageSize" aria-label="IPs por página">
+        <option value="10">10 IPs por página</option>
+        <option value="20">20 IPs por página</option>
+        <option value="50">50 IPs por página</option>
+      </select>
     </div>
 
     <div class="table-wrap">
@@ -152,6 +157,19 @@
   const bulkDeleteForm = document.getElementById('bulkDeleteForm');
   const clearFilters = document.getElementById('clearFilters');
   const sortHeaders = document.querySelectorAll('th.sortable');
+  const pageSize = document.getElementById('pageSize');
+  const pagination = document.createElement('nav');
+  pagination.className = 'event-pagination';
+  pagination.setAttribute('aria-label', 'Paginação de IPs');
+  const previousPage = document.createElement('button');
+  previousPage.type = 'button'; previousPage.className = 'btn'; previousPage.textContent = '← Anterior';
+  const pageLabel = document.createElement('span');
+  pageLabel.setAttribute('aria-live', 'polite');
+  const nextPage = document.createElement('button');
+  nextPage.type = 'button'; nextPage.className = 'btn'; nextPage.textContent = 'Próxima →';
+  pagination.append(previousPage, pageLabel, nextPage);
+  document.getElementById('ipsTable')?.parentElement.after(pagination);
+  let page = 1;
   let sortKey = null;
   let sortDir = 1;
 
@@ -167,7 +185,8 @@
     }
   }
 
-  function applyFilters() {
+  function applyFilters(resetPage = true) {
+    if (resetPage) page = 1;
     const q = (search?.value || '').trim().toLowerCase();
     const statusValue = status?.value || 'ALL';
     const enabledValue = enabled?.value || 'ALL';
@@ -181,12 +200,24 @@
           : row.dataset.status === statusValue);
       const matchesEnabled = enabledValue === 'ALL' || row.dataset.enabled === enabledValue;
       const show = matchesSearch && matchesStatus && matchesEnabled;
-      row.classList.toggle('filtered-out', !show);
-      if (!show) row.querySelector('.row-check').checked = false;
       if (show) visible.push(row);
     });
 
-    if (resultCount) resultCount.textContent = `${visible.length} de ${rows.length} IP(s)`;
+    const size = Number(pageSize?.value || 10);
+    const pages = Math.max(1, Math.ceil(visible.length / size));
+    page = Math.min(page, pages);
+    const start = (page - 1) * size;
+    const displayed = new Set(visible.slice(start, start + size));
+    rows.forEach(row => {
+      row.classList.toggle('filtered-out', !displayed.has(row));
+      if (!displayed.has(row)) row.querySelector('.row-check').checked = false;
+    });
+    if (resultCount) resultCount.textContent = visible.length
+      ? `${start + 1}–${Math.min(start + size, visible.length)} de ${visible.length} IP(s) · ${rows.length} cadastrados`
+      : `Nenhum IP corresponde aos filtros · ${rows.length} cadastrados`;
+    pageLabel.textContent = `Página ${page} de ${pages}`;
+    previousPage.disabled = page <= 1;
+    nextPage.disabled = page >= pages;
     updateSelectAllState();
     updateDeleteButton();
   }
@@ -196,13 +227,17 @@
     else { sortKey = key; sortDir = 1; }
     const tbody = document.querySelector('#ipsTable tbody');
     const value = (row) => {
+      if (key === 'status') return row.dataset.status === 'LISTED' ? 0
+        : row.dataset.error === '1' ? 1 : row.dataset.status === 'CLEAN' ? 2
+        : row.dataset.status === 'NEVER' ? 4 : 3;
       if (key === 'listed') return Number(row.dataset.listed);
       if (key === 'checked') return row.dataset.checked || '';
       return row.dataset[key] || '';
     };
     rows.sort((a, b) => {
       const av = value(a), bv = value(b);
-      if (key === 'listed') return (av - bv) * sortDir;
+      if (key === 'listed' || key === 'status') return (av - bv) * sortDir
+        || a.dataset.ip.localeCompare(b.dataset.ip, 'pt-BR', {numeric:true});
       return String(av).localeCompare(String(bv), 'pt-BR', {numeric: true, sensitivity: 'base'}) * sortDir;
     });
     rows.forEach(row => tbody.appendChild(row));
@@ -245,7 +280,10 @@
 
   sortHeaders.forEach(header => header.addEventListener('click', () => sortRows(header.dataset.sort)));
   applyFilters();
-  sortRows('ip');
+  sortRows('status');
+  pageSize?.addEventListener('change', () => applyFilters());
+  previousPage.addEventListener('click', () => { page--; applyFilters(false); });
+  nextPage.addEventListener('click', () => { page++; applyFilters(false); });
 
   window.confirmBulkDelete = function () {
     const selected = document.querySelectorAll('.row-check:checked').length;

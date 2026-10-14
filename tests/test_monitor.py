@@ -73,6 +73,21 @@ class MonitorTests(unittest.TestCase):
         for name in monitor.app.jinja_env.list_templates():
             monitor.app.jinja_env.get_template(name)
 
+    def test_cli_password_reset_preserves_data(self):
+        import importlib.util
+        from werkzeug.security import check_password_hash
+        spec = importlib.util.spec_from_file_location('password_reset', ROOT / 'reset-admin-password.py')
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        module.reset_password(monitor.DB_PATH, 'admin', 'new-test-password-only')
+        with monitor.db() as conn:
+            hashed = conn.execute("SELECT password_hash FROM users WHERE username='admin'").fetchone()[0]
+            self.assertTrue(check_password_hash(hashed, 'new-test-password-only'))
+            self.assertEqual(conn.execute('SELECT COUNT(*) FROM monitored_ips').fetchone()[0], 1)
+        conn.close()
+        with self.assertRaises(ValueError):
+            module.reset_password(monitor.DB_PATH, 'missing-user', 'new-test-password-only')
+
     def test_independent_event_pagination_keeps_latest_results(self):
         from flask import template_rendered
         captured = []

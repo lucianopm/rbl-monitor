@@ -616,6 +616,10 @@ def index():
         row["without_alerts"] = bool(row["checked_at"] and not row["has_error"]
                                       and row["status"] in {"CLEAN", "IGNORED", "NO_ALERT"})
         rows.append(row)
+    rows.sort(key=lambda r: (
+        0 if r["status"] == "LISTED" else 1 if r["has_error"] else
+        2 if r["status"] == "CLEAN" else 4 if not r["checked_at"] else 3,
+        ipaddress.ip_address(r["ip"]).version, int(ipaddress.ip_address(r["ip"]))))
     stats = {
         "total": len(rows),
         "active": sum(1 for r in rows if r["enabled"]),

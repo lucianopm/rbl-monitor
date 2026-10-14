@@ -79,7 +79,17 @@ Não copie `.env`, `data/` nem `backups/` para GitHub. Não modifique diretament
 
 Código, templates, scripts e ambiente Python pertencem a `root:rblmonitor` (leitura/execução pelo serviço, sem permissão de alterar código). `data/` pertence a `rblmonitor:rblmonitor`, com modo 0700. `.env` permanece `root:root`, modo 0600: o systemd lê esse arquivo antes de iniciar o processo como `rblmonitor`. Backups também são restritos ao root. Não execute `chown -R rblmonitor:rblmonitor /opt/rbl-monitor`, pois permitiria ao serviço alterar scripts que o atualizador executa como root.
 
-## 6. Testar e diagnosticar
+## Recuperar acesso administrativo
+
+A senha não pode ser recuperada em texto claro: o banco guarda apenas o hash. Para definir uma nova senha na instalação atualizada:
+
+```bash
+sudo /opt/rbl-monitor/.venv/bin/python /opt/rbl-monitor/reset-admin-password.py
+```
+
+Digite e confirme uma senha de pelo menos 10 caracteres; a entrada fica oculta. O script cria backup SQLite em `backups/`, redefine somente a conta `admin`, reativa essa conta e limpa seu bloqueio de tentativas. IPs, histórico e configurações são preservados. Não exige reiniciar o serviço. Não informe a senha em argumentos nem coloque-a no `.env`. O script exige acesso sudo no servidor. Se o arquivo não existir, atualize a aplicação antes.
+
+## Testar e diagnosticar
 
 ```bash
 sudo systemctl status rbl-monitor --no-pager

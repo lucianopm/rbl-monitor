@@ -104,7 +104,7 @@ for name in app.py extensions.py wsgi.py requirements.txt config.json rbls.json 
   install -m 0644 "$SOURCE/$name" "$APP_DIR/$name"
 done
 chmod 0755 "$APP_DIR/install.sh" "$APP_DIR/update.sh"
-for name in INSTALACAO.md USO.md ATUALIZACAO_GIT.md SEGURANCA.md VALIDACAO.md TROUBLESHOOTING.md .gitignore .env.example enable-auto-update.sh; do
+for name in INSTALACAO.md USO.md ATUALIZACAO_GIT.md SEGURANCA.md VALIDACAO.md TROUBLESHOOTING.md .gitignore .env.example enable-auto-update.sh reset-admin-password.py; do
   [[ ! -f "$SOURCE/$name" ]] || install -m 0644 "$SOURCE/$name" "$APP_DIR/$name"
 done
 cp -a -- "$SOURCE/templates" "$SOURCE/static" "$APP_DIR/"
