@@ -1,0 +1,50 @@
+RBL Monitor — Licença Permissiva com Atribuição Visível, versão 1.0
+Identificador local: LicenseRef-RBL-Monitor-Attribution-1.0
+Copyright (c) 2026 Luciano Marques
+Projeto original: https://github.com/lucianopm/rbl-monitor
+
+1. Permissões
+É concedida gratuitamente a qualquer pessoa ou organização que obtenha este
+software e sua documentação permissão para usar, executar, copiar, modificar,
+combinar, distribuir, sublicenciar e comercializar o software, inclusive como
+serviço hospedado, sujeita às condições abaixo. Não há obrigação de publicar
+o código-fonte de modificações nem de pagar royalties.
+
+2. Preservação da licença
+Cópias e distribuições que contenham este software ou partes substanciais dele
+devem preservar este aviso de copyright e o texto completo desta licença.
+Sublicenças não podem eliminar as obrigações de atribuição desta licença.
+
+3. Atribuição visível ao projeto original
+Em toda interface web de uma instalação ou versão derivada do RBL Monitor,
+inclusive usada internamente ou disponibilizada como serviço, devem permanecer
+visíveis o nome "RBL Monitor" e um link clicável para
+https://github.com/lucianopm/rbl-monitor no rodapé/créditos das páginas.
+O crédito não pode ser removido, ocultado, tornado ilegível ou substituído
+apenas pelo nome ou repositório de um fork. Créditos adicionais são permitidos.
+Não se exige logotipo, aparência ou texto publicitário específico.
+
+Se uma interface for redesenhada sem rodapé, o mesmo nome e link deverão
+aparecer em área de créditos equivalente, visível e diretamente acessível
+em todas as páginas, sem exigir autenticação adicional ou busca em documentos.
+Em distribuições sem interface web, a atribuição deve constar na documentação
+ou nos avisos fornecidos aos usuários. A incorporação de partes substanciais
+em outro produto deve preservar atribuição equivalente na interface ou créditos
+visíveis desse produto, quando existir interface.
+
+4. Dependências e autoria
+Esta licença aplica-se ao material do projeto sobre o qual o titular possui
+direitos. Dependências de terceiros conservam suas próprias licenças e avisos.
+A atribuição não implica apoio, certificação ou responsabilidade do autor
+por versões modificadas, produtos ou serviços de terceiros.
+
+5. Ausência de garantias e responsabilidade
+O software é fornecido no estado em que se encontra, sem garantias expressas
+ou implícitas, inclusive de adequação, comercialização ou ausência de infração.
+Na extensão permitida pela legislação aplicável, o autor e os demais titulares
+não respondem por danos, perdas ou reclamações decorrentes do uso, distribuição
+ou impossibilidade de uso do software.
+
+Esta é uma licença personalizada de caráter permissivo, inspirada na MIT.
+Não é a licença MIT padrão nem uma licença aprovada pela OSI. A validade e
+interpretação das condições estão sujeitas à legislação aplicável.

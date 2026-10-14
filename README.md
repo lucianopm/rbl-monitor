@@ -81,6 +81,14 @@ Para redefinir a senha administrativa com backup:
 sudo /opt/rbl-monitor/.venv/bin/python /opt/rbl-monitor/reset-admin-password.py
 ```
 
+## Licença e créditos
+
+O RBL Monitor usa a [Licença Permissiva com Atribuição Visível](LICENSE), uma licença personalizada. Permite uso pessoal e empresarial, modificações, redistribuição e comercialização, sem exigir abertura das modificações.
+
+É obrigatório preservar o nome **RBL Monitor** e o link **https://github.com/lucianopm/rbl-monitor** no rodapé/créditos das interfaces, inclusive em forks e serviços hospedados. Créditos adicionais são permitidos. Se não houver rodapé, mantenha área equivalente de créditos visível e diretamente acessível em todas as páginas. Cópias devem incluir o copyright e a licença completa. Dependências de terceiros mantêm suas próprias licenças.
+
+Esta não é a MIT padrão nem uma licença aprovada pela OSI. Consulte o texto completo de `LICENSE`. A licença acompanha o release v1.2.0 e seguintes; pacotes anteriores não são alterados retroativamente por esta publicação.
+
 ## Documentação
 
 | Documento | Conteúdo |

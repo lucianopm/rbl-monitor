@@ -1,5 +1,12 @@
 # Alterações
 
+## v1.2.0 — 13/10/2026
+
+- Licença permissiva personalizada com referência visível obrigatória ao projeto original no rodapé/créditos.
+- LICENSE incluído na instalação, documentação e pacote rbl-monitor.zip.
+- Capturas do painel sem IPs identificáveis no README.
+- Todas as melhorias de dashboard, paginação, canais main/dev e recuperação de senha incluídas.
+
 ## v1.1.0 — 13/10/2026
 
 - Indicadores clicáveis e filtro de erros de RBL, rDNS e FCrDNS.
