@@ -63,7 +63,7 @@ sudo bash install.sh
 
 Acesse `http://IP_DO_SERVIDOR:8080/login`. O script exibe a senha inicial `admin` uma única vez.
 
-Os próximos releases usam `rbl-monitor.zip`. No release v1.1.0, o anexo ainda tem o nome antigo; baixe-o e renomeie-o para `rbl-monitor.zip` antes de seguir os comandos, ou use o comando de compatibilidade em [INSTALACAO.md](INSTALACAO.md).
+O pacote de instalação dos releases é `rbl-monitor.zip`, incluindo o release v1.1.0. Após extrair, a pasta da aplicação é `rbl-monitor/`.
 
 **Buscar a versão mais atual no GitHub para atualizar uma instalação existente:**
 

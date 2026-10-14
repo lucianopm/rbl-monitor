@@ -23,12 +23,6 @@ cd rbl-monitor
 ```
 
 ## 3. Executar o instalador
-O nome `rbl-monitor.zip` será usado nos próximos releases. Para o release v1.1.0, que mantém o nome antigo, baixe com este comando e depois execute `unzip rbl-monitor.zip`:
-
-```bash
-curl -fL https://github.com/lucianopm/rbl-monitor/releases/download/v1.1.0/rbl-monitor-consolidado.zip -o rbl-monitor.zip
-```
-
 
 ```bash
 sudo bash install.sh
