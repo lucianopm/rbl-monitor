@@ -12,6 +12,8 @@
     <a class="brand" href="{{ url_for('index') }}">RBL <span>MONITOR</span></a>
     <div class="nav-actions">
       {% if user %}
+      <a class="btn" href="{{ url_for('index') }}">IPs</a>
+      <a class="btn" href="{{ url_for('domains.index') }}">Domínios</a>
       <a href="{{ url_for('new_ip') }}" class="btn primary">+ Adicionar IP</a>
       <form method="post" action="{{ url_for('check_all') }}" style="display:inline">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

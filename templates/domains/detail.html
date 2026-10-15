@@ -1,0 +1,28 @@
+{% extends 'base.html' %}{% block content %}
+<section class="hero"><a class="back" href="{{ url_for('domains.index') }}">← Domínios</a><h1>{{ item.domain }}</h1><p>{{ item.description }} · {{ 'Monitoramento ativo' if item.enabled else 'Pausado' }}</p></section>
+{% if item.enabled %}<form method="post" action="{{ url_for('domains.check', domain_id=item.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn primary">Verificar agora</button></form>{% endif %}
+{% include 'domains/_report.html' %}
+{% if request.args.get('check') %}<p>Relatório histórico. <a href="{{ url_for('domains.detail', domain_id=item.id) }}">Ver resultado mais recente</a></p>{% endif %}
+<details class="panel event-panel"><summary class="panel-head"><h2>Editar monitoramento</h2></summary><form class="user-edit-form" method="post" action="{{ url_for('domains.edit', domain_id=item.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label>Descrição<input name="description" value="{{ item.description }}" maxlength="250"></label><label>Seletor DKIM<input name="selector" value="{{ item.selector }}" maxlength="100"></label><label class="check"><input type="checkbox" name="enabled" {% if item.enabled %}checked{% endif %}>Monitorar automaticamente</label><button class="btn">Salvar</button></form></details>
+<details class="panel event-panel" {% if request.args.get('page') %}open{% endif %}>
+<summary class="panel-head"><h2>Histórico ({{ total }})</h2></summary>
+<table><thead><tr><th>Data</th><th>Resultado das listas</th></tr></thead><tbody>
+{% for check in history %}<tr><td><a href="{{ url_for('domains.detail', domain_id=item.id, check=check.id, page=page, incidents=incident_page) }}">{{ check.checked_at|br_datetime }}</a></td><td>{{ check.status }}</td></tr>
+{% else %}<tr><td colspan="2">Sem consultas registradas.</td></tr>{% endfor %}
+</tbody></table>
+<nav class="event-pagination" aria-label="Histórico de domínio">
+{% if page>1 %}<a class="btn" href="{{ url_for('domains.detail', domain_id=item.id, page=page-1, incidents=incident_page) }}">Anterior</a>{% endif %}
+<span>{{ page }} / {{ pages }}</span>
+{% if page<pages %}<a class="btn" href="{{ url_for('domains.detail', domain_id=item.id, page=page+1, incidents=incident_page) }}">Próxima</a>{% endif %}
+</nav></details>
+<details class="panel event-panel" {% if request.args.get('incidents') %}open{% endif %}>
+<summary class="panel-head"><h2>Episódios de listagem ({{ incident_total }})</h2></summary>
+{% for incident in incidents %}<article class="incident-entry"><strong>{{ providers[incident.provider].name }}</strong><p>{{ incident.detail }}</p><p>Detectado: {{ incident.detected_at|br_datetime }} · Encerrado: {{ incident.cleared_at|br_datetime }}</p></article>
+{% else %}<p class="user-edit-form">Nenhum episódio registrado.</p>{% endfor %}
+<nav class="event-pagination" aria-label="Episódios do domínio">
+{% if incident_page>1 %}<a class="btn" href="{{ url_for('domains.detail', domain_id=item.id, page=page, incidents=incident_page-1) }}">Anterior</a>{% endif %}
+<span>{{ incident_page }} / {{ incident_pages }}</span>
+{% if incident_page<incident_pages %}<a class="btn" href="{{ url_for('domains.detail', domain_id=item.id, page=page, incidents=incident_page+1) }}">Próxima</a>{% endif %}
+</nav></details>
+<form class="danger-zone" method="post" action="{{ url_for('domains.delete', domain_id=item.id) }}" onsubmit="return confirm('Remover este domínio e todo seu histórico?');"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn danger">Remover domínio e histórico</button></form>
+{% endblock %}

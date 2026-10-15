@@ -1,0 +1,4 @@
+{% extends 'base.html' %}{% block content %}
+<section class="hero"><a class="back" href="{{ url_for('domains.index') }}">← Domínios</a><h1>Consulta pontual</h1><p>Este domínio não foi cadastrado. O relatório é exibido somente nesta resposta e não é salvo no banco.</p></section>
+{% include 'domains/_report.html' %}
+{% endblock %}

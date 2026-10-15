@@ -59,3 +59,7 @@ O sistema cria uma notificação quando abre um incidente novo em RBL habilitada
 ## Configuração de monitoramento
 
 Em **Configurações**, ajuste o intervalo em minutos e o timeout DNS. Consultas dependem da conectividade externa, do resolvedor em uso e das regras de cada serviço DNSBL. A opção `check_on_start` em `config.json` controla se há uma varredura ao iniciar o serviço.
+
+## Domínios
+
+A área Domínios oferece dois fluxos independentes: cadastro para monitoramento automático com histórico/alertas e consulta pontual sem cadastro ou gravação do relatório. Veja [DOMINIOS.md](DOMINIOS.md) para configurar listas, interpretar resultados e entender as limitações de SPF, DMARC e DKIM.

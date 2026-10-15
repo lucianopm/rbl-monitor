@@ -147,8 +147,8 @@ import json, pathlib, sys
 p=pathlib.Path(sys.argv[1])
 for n in ('config.json','rbls.json'):
     json.loads((p/n).read_text(encoding='utf-8'))
-for n in ('app.py','extensions.py','wsgi.py'):
-    compile((p/n).read_bytes(),str(p/n),'exec')
+for source in p.glob('*.py'):
+    compile(source.read_bytes(),str(source),'exec')
 PY
 bash -n "$TMP/repo/install.sh" "$TMP/repo/update.sh"
 log "Versão Git obtida: $COMMIT"

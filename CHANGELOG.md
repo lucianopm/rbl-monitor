@@ -1,5 +1,11 @@
 # Alterações
 
+## Em desenvolvimento — 15/10/2026
+
+- Área independente de domínios, com consultas pontuais sem persistência do relatório e monitoramento agendado com histórico, episódios e SMTP.
+- Inspeção de SPF, DMARC, DKIM e MX; DBL/URIBL/SURBL opcionais, teste de acesso e códigos específicos de cada provedor.
+- Limite por conta, proteção CSRF e relatórios sem cache; dependência tldextract com PSL offline.
+
 ## v1.3.0 — 14/10/2026
 
 - Versão v1.3.0 visível no rodapé; atualizações Git mostram também canal e commit. VERSION identifica o pacote.

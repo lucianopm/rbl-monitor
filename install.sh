@@ -98,8 +98,8 @@ assert sys.version_info >= (3,10), 'Python 3.10 ou superior necessário'
 p=pathlib.Path(sys.argv[1])
 for name in ('config.json','rbls.json'):
     json.loads((p/name).read_text(encoding='utf-8'))
-for name in ('app.py','extensions.py','wsgi.py'):
-    compile((p/name).read_bytes(),str(p/name),'exec')
+for source in p.glob('*.py'):
+    compile(source.read_bytes(),str(source),'exec')
 PY_CHECK
 
 log "Preparando instalação no próprio diretório: $APP_DIR"

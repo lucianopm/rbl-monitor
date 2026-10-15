@@ -1,5 +1,9 @@
 # Validação da entrega — 13/10/2026
 
+## Área Domínios — 15/10/2026 (em desenvolvimento)
+
+42 testes automatizados passaram em SQLite isolado, com DNS/SMTP simulados. Os 17 novos testes cobrem validação de nomes, códigos de provedores, teste de acesso, política DMARC herdada, privacidade da consulta pontual, limite por conta, autorização/CSRF, episódios, pausa e exclusão sem perda dos IPs, escopo de snapshots, seleção do agendamento e envio SMTP sem duplicação. Todos os templates compilaram e a sintaxe dos três scripts Bash foi validada. Não foram feitas consultas reais com credenciais de provedores nem envio SMTP real. Instalação e agendamento Linux/systemd continuam sujeitos à homologação no servidor.
+
 ## Release v1.3.0 — 14/10/2026
 
 25 testes automatizados passaram, incluindo versão no rodapé e tratamento de metadados inválidos. Sintaxe Bash dos três scripts conferida. Pacote gerado exclusivamente dos arquivos versionados, com VERSION=1.3.0 e LICENSE. As limitações de validação Linux abaixo continuam aplicáveis.

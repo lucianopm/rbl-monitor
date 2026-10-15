@@ -550,6 +550,7 @@ def run_all():
 def scheduler():
     if CONFIG.get("check_on_start", False):
         run_all()
+        run_domains()
     while True:
         interval = max(1, int(get_setting("check_interval_minutes", float(CONFIG.get("check_interval_hours", 24)) * 60))) * 60
         if schedule_changed.wait(interval):
@@ -557,6 +558,7 @@ def scheduler():
             continue
         try:
             run_all()
+            run_domains()
             deliver_alerts()
         except Exception:
             logger.exception("Falha na rotina agendada; nova tentativa no próximo intervalo")
@@ -942,6 +944,8 @@ from extensions import setup, effective_rbls, get_setting, record_incidents, del
 
 init_db()
 setup(app, db, CONFIG, RBL_FILE, run_check, run_all, retry_one=retry_one_rbl)
+from domain_monitor import setup_domains, run_domains
+setup_domains(app, db)
 
 if __name__ == "__main__":
     if os.getenv("ENABLE_SCHEDULER", "1") == "1":

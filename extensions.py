@@ -631,6 +631,8 @@ def setup(app, db_factory, config, rbl_file, run_one, run_all, retry_one=None):
             AND NOT EXISTS (SELECT 1 FROM incident_ignores ig
                 WHERE ig.ip_id=i.ip_id AND ig.rbl_zone=i.rbl_zone)""", zones).fetchone()[0]
         conn.close()
+        from domain_monitor import pending_count
+        pending += pending_count()
         return render_template("smtp.html", smtp={k: v for k, v in configuration.items() if k != "password"},
             password_configured=bool(configuration["password"]),
             recipients=get_setting("alert_recipients"),

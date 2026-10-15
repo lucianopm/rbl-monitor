@@ -16,6 +16,7 @@ os.environ.update(RBL_MONITOR_DB=str(Path(TEMP.name) / 'test.db'),
                   RBL_MONITOR_SECRET='test-only-session-secret-do-not-deploy')
 import app as monitor
 import extensions as ext
+import domain_monitor as domains
 
 
 class MonitorTests(unittest.TestCase):
@@ -27,6 +28,8 @@ class MonitorTests(unittest.TestCase):
             conn.execute("UPDATE users SET active=1,is_admin=1 WHERE id=1")
             conn.execute('DELETE FROM monitored_ips')
             conn.execute('DELETE FROM settings')
+            conn.execute('DELETE FROM monitored_domains')
+            conn.execute('DELETE FROM domain_rate_limits')
             cur = conn.execute('INSERT INTO monitored_ips(ip,description,created_at) VALUES (?,?,?)',
                                ('192.0.2.10', 'documentation test', monitor.now()))
             self.ip_id = cur.lastrowid
@@ -336,6 +339,183 @@ class MonitorTests(unittest.TestCase):
         with monitor.db() as conn:
             self.assertEqual(conn.execute('SELECT closure_reason FROM incidents').fetchone()[0], 'MANUAL')
         conn.close()
+
+
+def domain_report(status='LISTED'):
+    return dict(domain='example.com', selector='', checked_at=domains.stamp(), status=status,
+                listed_count=int(status == 'LISTED'), error_count=int(status == 'ERROR'), auth={},
+                providers=[dict(provider='uribl', name='URIBL MULTI', domain='example.com',
+                                status=status, detail='Offline fixture')])
+
+
+class DomainFeatureTests(unittest.TestCase):
+    setUp = MonitorTests.setUp
+    authenticate_as = MonitorTests.authenticate_as
+    add_test_user = MonitorTests.add_test_user
+
+    def enroll(self):
+        with domains.connection() as conn:
+            ext.set_setting(conn, 'domain_providers', '{"uribl":true}')
+            cursor = conn.execute('INSERT INTO monitored_domains(domain,created_at) VALUES (?,?)',
+                                  ('example.com', domains.stamp()))
+            return cursor.lastrowid
+
+    def test_normalization(self):
+        self.assertEqual(domains.normalize_domain('WWW.Example.COM.'), 'www.example.com')
+        self.assertEqual(domains.normalize_domain('exemplo.com.br'), 'exemplo.com.br')
+        self.assertTrue(domains.normalize_domain('café.com').startswith('xn--'))
+        for value in ('127.0.0.1', 'https://example.com', 'user@example.com', 'example.com:80', 'localhost', 'com.br'):
+            with self.assertRaises(ValueError):
+                domains.normalize_domain(value)
+        with self.assertRaises(ValueError):
+            domains.normalize_selector('selector..bad')
+
+    def test_code_classification(self):
+        for provider, code in (('dbl','127.0.1.255'), ('uribl','127.0.0.1'), ('surbl','127.0.0.1')):
+            self.assertEqual(domains.classify_codes(provider, [code])[0], 'DNS_ERROR')
+        self.assertEqual(domains.classify_codes('uribl', ['127.0.0.2'])[0], 'LISTED')
+        self.assertEqual(domains.classify_codes('uribl', ['127.0.0.8'])[0], 'NOTICE')
+        self.assertEqual(domains.classify_codes('surbl', ['127.0.0.16'])[0], 'LISTED')
+        self.assertEqual(domains.classify_codes('surbl', ['127.0.0.32'])[0], 'NOTICE')
+
+    def test_access_failure_is_not_clean(self):
+        with patch.object(domains, 'query', return_value=('NXDOMAIN', [])) as query:
+            result = domains.check_provider('example.com', 'uribl', {'uribl':True})
+        self.assertEqual(result['status'], 'ACCESS_ERROR')
+        self.assertEqual(query.call_count, 1)
+
+    def test_positive_test_then_clean_registrable_target(self):
+        with patch.object(domains, 'query', side_effect=[('ANSWER',['127.0.0.14']), ('NXDOMAIN',[])]) as query:
+            result = domains.check_provider('mail.example.com.br', 'uribl', {'uribl':True})
+        self.assertEqual(result['status'], 'CLEAN')
+        self.assertEqual(query.call_args.args[0], 'example.com.br.multi.uribl.com')
+
+    def test_default_disabled(self):
+        with patch.object(domains, 'query') as query:
+            self.assertEqual(domains.check_provider('example.com','dbl',{})['status'], 'DISABLED')
+        query.assert_not_called()
+
+    def test_resolver_failure_sanitized(self):
+        with patch.object(domains.dns.resolver, 'Resolver', side_effect=RuntimeError('secret')):
+            self.assertEqual(domains.query('example.com','TXT'), ('DNS_ERROR', []))
+
+    def test_dmarc_error_not_inherited(self):
+        with patch.object(domains, 'query', side_effect=[('NXDOMAIN',[]),('TIMEOUT',[]),('NXDOMAIN',[])]) as query:
+            result = domains.check_auth('mail.example.com','')
+        self.assertEqual(result['DMARC']['status'], 'TIMEOUT')
+        self.assertEqual(result['DKIM']['status'], 'NOT_CHECKED')
+        self.assertEqual(query.call_count, 3)
+
+    def test_dmarc_inheritance(self):
+        with patch.object(domains, 'query', side_effect=[('NXDOMAIN',[]),('NXDOMAIN',[]),
+                    ('ANSWER',['v=DMARC1; p=reject; sp=quarantine']),('NXDOMAIN',[])]):
+            result = domains.check_auth('mail.example.com','')
+        self.assertIn('quarantine', result['DMARC']['detail'])
+        self.assertIn('herdada', result['DMARC']['detail'])
+
+    def test_lookup_ephemeral_rate_and_no_cache(self):
+        self.authenticate_as(self.client, 1)
+        monitor.app.config['WTF_CSRF_ENABLED'] = False
+        with patch.object(domains, 'analyze', return_value=domain_report()) as analyze:
+            response = self.client.post('/domains/lookup', data={'domain':'example.com'})
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.headers['Cache-Control'], 'no-store')
+            self.assertEqual(self.client.post('/domains/lookup', data={'domain':'example.com'}).status_code, 302)
+            self.assertEqual(analyze.call_count, 1)
+        with domains.connection() as conn:
+            for table in ('monitored_domains','domain_checks','domain_incidents','domain_outbox'):
+                self.assertEqual(conn.execute('SELECT COUNT(*) FROM '+table).fetchone()[0], 0)
+
+    def test_permissions_and_csrf(self):
+        self.assertEqual(self.client.get('/domains/').status_code, 302)
+        self.authenticate_as(self.client, self.add_test_user())
+        self.assertEqual(self.client.get('/domains/').status_code, 200)
+        self.assertEqual(self.client.get('/domains/providers').status_code, 403)
+        self.assertEqual(self.client.post('/domains/add', data={'domain':'example.com'}).status_code, 400)
+
+    def test_incident_lifecycle_errors_preserve(self):
+        domain_id = self.enroll()
+        with patch.object(domains, 'alerts_enabled', return_value=True):
+            domains.record_report(domain_id, domain_report())
+            domains.record_report(domain_id, domain_report())
+            domains.record_report(domain_id, domain_report('ERROR'))
+        with domains.connection() as conn:
+            self.assertEqual(conn.execute('SELECT COUNT(*) FROM domain_incidents WHERE cleared_at IS NULL').fetchone()[0],1)
+            self.assertEqual(conn.execute('SELECT COUNT(*) FROM domain_outbox').fetchone()[0],1)
+        domains.record_report(domain_id, domain_report('CLEAN'))
+        self.assertEqual(domains.pending_count(), 0)
+
+    def test_monitor_history_delete_and_pause(self):
+        domain_id = self.enroll()
+        for _ in range(17):
+            domains.record_report(domain_id, domain_report('CLEAN'))
+        self.authenticate_as(self.client,1)
+        monitor.app.config['WTF_CSRF_ENABLED'] = False
+        self.assertEqual(self.client.get(f'/domains/{domain_id}?page=2').status_code,200)
+        self.client.post(f'/domains/{domain_id}/edit', data={'description':'Paused'})
+        with patch.object(domains, 'analyze') as analyze:
+            domains.run_domains()
+            analyze.assert_not_called()
+        self.client.post(f'/domains/{domain_id}/delete')
+        with domains.connection() as conn:
+            self.assertEqual(conn.execute('SELECT COUNT(*) FROM domain_checks').fetchone()[0],0)
+            self.assertEqual(conn.execute('SELECT COUNT(*) FROM monitored_ips').fetchone()[0],1)
+
+    def test_dqs_key_not_in_report(self):
+        import json
+        with patch.object(monitor, 'provider_key', return_value='privateTestToken'), patch.object(domains, 'query',
+                side_effect=[('ANSWER',['127.0.1.2']), ('ANSWER',['127.255.255.250'])]):
+            result = domains.check_provider('example.com','dbl',{'dbl':True})
+        self.assertEqual(result['status'], 'DNS_ERROR')
+        self.assertNotIn('privateTestToken', json.dumps(result))
+
+    def test_provider_settings_and_disabled_pending(self):
+        domain_id = self.enroll()
+        with patch.object(domains, 'alerts_enabled', return_value=True):
+            domains.record_report(domain_id, domain_report())
+        self.authenticate_as(self.client,1)
+        monitor.app.config['WTF_CSRF_ENABLED'] = False
+        self.assertEqual(self.client.get('/domains/providers').status_code,200)
+        self.client.post('/domains/providers', data={'dbl':'on'})
+        self.assertFalse(domains.provider_settings().get('dbl'))
+        self.client.post('/domains/providers', data={})
+        self.assertEqual(domains.pending_count(),0)
+        with domains.connection() as conn:
+            self.assertEqual(conn.execute('SELECT COUNT(*) FROM domain_outbox').fetchone()[0],0)
+
+    def test_smtp_delivery_once_and_error_redaction(self):
+        domain_id = self.enroll()
+        with domains.connection() as conn:
+            ext.set_setting(conn,'alert_recipients','admin@example.com')
+        with patch.object(domains,'alerts_enabled',return_value=True):
+            domains.record_report(domain_id, domain_report())
+            with patch.object(domains,'send_message',side_effect=RuntimeError('secret credentials')):
+                domains.deliver_domain_alerts()
+            with domains.connection() as conn:
+                self.assertEqual(conn.execute('SELECT last_error FROM domain_outbox').fetchone()[0],'RuntimeError')
+            with patch.object(domains,'send_message') as send:
+                domains.deliver_domain_alerts()
+                domains.deliver_domain_alerts()
+                send.assert_called_once()
+
+    def test_snapshot_scope_and_independent_pagination(self):
+        domain_id = self.enroll()
+        first = domains.record_report(domain_id, domain_report('CLEAN'))
+        for _ in range(16):
+            domains.record_report(domain_id, domain_report('ERROR'))
+        self.authenticate_as(self.client,1)
+        response = self.client.get(f'/domains/{domain_id}?check={first}&page=2&incidents=1')
+        self.assertEqual(response.status_code,200)
+        self.assertIn(b'CLEAN',response.data)
+        self.assertEqual(self.client.get(f'/domains/{domain_id}?check=99999').status_code,404)
+
+    def test_templates_compile_and_scheduler_selects_enabled(self):
+        for name in monitor.app.jinja_env.list_templates():
+            monitor.app.jinja_env.get_template(name)
+        domain_id = self.enroll()
+        with patch.object(domains,'run_domain') as run, patch.object(domains,'deliver_domain_alerts'):
+            domains.run_domains()
+            run.assert_called_once_with(domain_id)
 
 
 if __name__ == '__main__':
