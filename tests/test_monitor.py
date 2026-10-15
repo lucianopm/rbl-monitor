@@ -178,7 +178,7 @@ class MonitorTests(unittest.TestCase):
     def test_footer_version_and_safe_build_metadata(self):
         from version_info import build_label
         html = self.client.get('/login').get_data(as_text=True)
-        self.assertIn('v1.3.0-dev', html)
+        self.assertIn('v' + (ROOT / 'VERSION').read_text().strip(), html)
         with tempfile.TemporaryDirectory() as directory:
             base = Path(directory)
             (base / 'VERSION').write_text('1.3.0-dev', encoding='utf-8')

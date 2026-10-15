@@ -2,7 +2,7 @@
 
 `install.sh` instala do zero e cancela se detectar uma versão anterior, preservando seus dados. Use `update.sh` para atualizar. Uma reinstalação exige backup e remoção manual dos caminhos antigos previamente conferidos.
 
-**Instalação no próprio diretório (código atual main/dev):** o instalador prepara o ambiente na pasta em que `install.sh` está localizado. Não copia nem duplica os arquivos para `/opt`. Para escolher outro local, descompacte o pacote diretamente nele. `/opt/rbl-monitor` é apenas um exemplo recomendado. O release v1.2.0 ainda contém o instalador anterior; para usar esta mudança antes do próximo release, obtenha a branch atual (exemplo abaixo).
+**Instalação no próprio diretório (desde v1.3.0):** o instalador prepara o ambiente na pasta em que `install.sh` está localizado. Não copia nem duplica os arquivos para `/opt`. Para escolher outro local, descompacte o pacote diretamente nele. `/opt/rbl-monitor` é apenas um exemplo recomendado. Releases até v1.2.0 contêm o instalador anterior.
 
 ## 1. Pré-requisitos
 
@@ -14,19 +14,20 @@
 
 ## 2. Baixar e extrair o ZIP
 
-Baixe o arquivo `rbl-monitor.zip` anexado ao [release mais recente](https://github.com/lucianopm/rbl-monitor/releases/latest). Use esse pacote, que contém a pasta `rbl-monitor/`. No servidor, em um diretório de trabalho, rode:
+Baixe o arquivo `rbl-monitor.zip` anexado ao [release mais recente](https://github.com/lucianopm/rbl-monitor/releases/latest). Use esse pacote, que contém a pasta `rbl-monitor/`. No servidor, escolha a pasta final antes de extrair. Exemplo em `/opt/rbl-monitor`:
 
 ```bash
 sudo apt-get update
 sudo apt-get install -y unzip curl
-curl -fL https://github.com/lucianopm/rbl-monitor/releases/latest/download/rbl-monitor.zip -o rbl-monitor.zip
-unzip rbl-monitor.zip
+cd /opt
+sudo curl -fL https://github.com/lucianopm/rbl-monitor/releases/latest/download/rbl-monitor.zip -o rbl-monitor.zip
+sudo unzip rbl-monitor.zip
 cd rbl-monitor
 ```
 
 ## 3. Executar o instalador
 
-Para obter o código atual diretamente em `/opt/rbl-monitor-main`, sem depender do ZIP do release anterior:
+Como alternativa ao release, para obter diretamente a branch main em `/opt/rbl-monitor-main`:
 
 ```bash
 cd /opt

@@ -1,8 +1,8 @@
 # Alterações
 
-## Em desenvolvimento — 14/10/2026
+## v1.3.0 — 14/10/2026
 
-- Versão visível no rodapé; atualizações Git mostram também canal e commit. VERSION identifica o pacote; o código ainda não lançado usa 1.3.0-dev.
+- Versão v1.3.0 visível no rodapé; atualizações Git mostram também canal e commit. VERSION identifica o pacote.
 
 - Instalação no diretório do próprio pacote, sem cópia dos fontes; --path seleciona outro pacote já descompactado.
 - Atualizador e agendamento detectam o caminho local, mantendo compatibilidade com instalações em /opt/rbl-monitor.

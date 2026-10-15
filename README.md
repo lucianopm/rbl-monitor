@@ -63,7 +63,7 @@ sudo bash install.sh
 
 Acesse `http://IP_DO_SERVIDOR:8080/login`. O script exibe a senha inicial `admin` uma única vez.
 
-O instalador no próprio diretório e a gestão ampliada de usuários estão disponíveis no código atual `main`/`dev`; o release v1.2.0 mantém o comportamento anterior. Para instalação com o código atual antes do próximo release, veja [INSTALACAO.md](INSTALACAO.md).
+Desde o release v1.3.0, o instalador usa a própria pasta do pacote e a administração inclui alteração de permissões, redefinição de senhas e exclusão de usuários. Descompacte diretamente no caminho final, acessível ao usuário de serviço; veja [INSTALACAO.md](INSTALACAO.md).
 
 O pacote de instalação dos releases é `rbl-monitor.zip`, incluindo o release v1.1.0. Após extrair, a pasta da aplicação é `rbl-monitor/`.
 

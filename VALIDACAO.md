@@ -1,5 +1,9 @@
 # Validação da entrega — 13/10/2026
 
+## Release v1.3.0 — 14/10/2026
+
+25 testes automatizados passaram, incluindo versão no rodapé e tratamento de metadados inválidos. Sintaxe Bash dos três scripts conferida. Pacote gerado exclusivamente dos arquivos versionados, com VERSION=1.3.0 e LICENSE. As limitações de validação Linux abaixo continuam aplicáveis.
+
 ## Atualização de 14/10/2026 (main/dev, posterior ao release v1.2.0)
 
 24 testes automatizados passaram, incluindo login com sessão revogável, gestão de perfis, redefinição de senha com confirmação, exclusão sem perda de IPs, proteção da própria conta, CSRF e revogação de cookies após desativação, reativação e reutilização de ID. Todos os templates compilados. Sintaxe dos três scripts Bash e ajuda do instalador/atualizador conferidas.
