@@ -400,14 +400,14 @@ class DomainFeatureTests(unittest.TestCase):
             self.assertEqual(domains.query('example.com','TXT'), ('DNS_ERROR', []))
 
     def test_dmarc_error_not_inherited(self):
-        with patch.object(domains, 'query', side_effect=[('NXDOMAIN',[]),('TIMEOUT',[]),('NXDOMAIN',[])]) as query:
+        with patch.object(domains, 'check_dkim', return_value={'status':'INCONCLUSIVE'}) as dkim, patch.object(domains, 'query', side_effect=[('NXDOMAIN',[]),('TIMEOUT',[]),('NXDOMAIN',[])]) as query:
             result = domains.check_auth('mail.example.com','')
         self.assertEqual(result['DMARC']['status'], 'TIMEOUT')
-        self.assertEqual(result['DKIM']['status'], 'NOT_CHECKED')
+        dkim.assert_called_once_with('mail.example.com','')
         self.assertEqual(query.call_count, 3)
 
     def test_dmarc_inheritance(self):
-        with patch.object(domains, 'query', side_effect=[('NXDOMAIN',[]),('NXDOMAIN',[]),
+        with patch.object(domains, 'check_dkim', return_value={}), patch.object(domains, 'query', side_effect=[('NXDOMAIN',[]),('NXDOMAIN',[]),
                     ('ANSWER',['v=DMARC1; p=reject; sp=quarantine']),('NXDOMAIN',[])]):
             result = domains.check_auth('mail.example.com','')
         self.assertIn('quarantine', result['DMARC']['detail'])
@@ -516,6 +516,117 @@ class DomainFeatureTests(unittest.TestCase):
         with patch.object(domains,'run_domain') as run, patch.object(domains,'deliver_domain_alerts'):
             domains.run_domains()
             run.assert_called_once_with(domain_id)
+
+
+class DomainEnhancementTests(unittest.TestCase):
+    setUp = MonitorTests.setUp
+    authenticate_as = MonitorTests.authenticate_as
+    add_test_user = MonitorTests.add_test_user
+
+    def test_automatic_dkim_finds_multiple_selectors(self):
+        def query(name, kind):
+            return ('ANSWER',['v=DKIM1; p=TESTPUBLICKEY']) if name.startswith(('google.','s1.')) else ('NXDOMAIN',[])
+        with patch.object(domains,'query',side_effect=query) as dns_query:
+            result = domains.check_dkim('example.com')
+        self.assertEqual(result['status'],'PRESENT')
+        self.assertEqual(result['mode'],'automatic')
+        self.assertEqual(len(result['attempts']),len(domains.DKIM_CANDIDATES))
+        self.assertEqual(dns_query.call_count,len(domains.DKIM_CANDIDATES))
+        self.assertIn('google',result['detail'])
+        self.assertIn('s1',result['detail'])
+
+    def test_automatic_not_found_is_inconclusive(self):
+        with patch.object(domains,'query',return_value=('NXDOMAIN',[])):
+            result = domains.check_dkim('example.com')
+        self.assertEqual(result['status'],'INCONCLUSIVE')
+        self.assertIn('não comprova',result['detail'])
+        self.assertEqual(result['records'],[])
+
+    def test_automatic_timeout_preserved(self):
+        with patch.object(domains,'query',return_value=('TIMEOUT',[])):
+            result = domains.check_dkim('example.com')
+        self.assertEqual(result['status'],'TIMEOUT')
+
+    def test_partial_discovery_does_not_hide_dns_errors(self):
+        def query(name, kind):
+            return ('ANSWER',['v=DKIM1; p=TESTPUBLICKEY']) if name.startswith('s1.') else ('DNS_ERROR',[])
+        with patch.object(domains,'query',side_effect=query):
+            result = domains.check_dkim('example.com')
+        self.assertEqual(result['status'],'PRESENT')
+        self.assertIn('parcial',result['detail'])
+        self.assertTrue(any(row['status']=='DNS_ERROR' for row in result['attempts']))
+
+    def test_explicit_selector_does_not_probe_other_names(self):
+        with patch.object(domains,'query',return_value=('NXDOMAIN',[])) as query:
+            result = domains.check_dkim('example.com','custom')
+        query.assert_called_once_with('custom._domainkey.example.com','TXT')
+        self.assertEqual(result['mode'],'explicit')
+        self.assertEqual(result['status'],'MISSING')
+
+    def test_revoked_and_duplicate_keys_are_not_found(self):
+        for records in (['v=DKIM1; p='], ['v=DKIM1; p=KEY; p=SECOND'], ['v=DKIM1; p=KEY','v=DKIM1; p=OTHER']):
+            with patch.object(domains,'query',return_value=('ANSWER',records)):
+                result = domains.check_dkim('example.com','custom')
+            self.assertEqual(result['status'],'INVALID')
+
+    def test_batch_route_protected_and_starts_background_only(self):
+        self.assertEqual(self.client.post('/domains/check-all').status_code,302)
+        self.authenticate_as(self.client,1)
+        self.assertEqual(self.client.post('/domains/check-all').status_code,400)
+        DomainFeatureTests.enroll(self)
+        monitor.app.config['WTF_CSRF_ENABLED'] = False
+        with patch.object(domains,'submit_domain_checks',return_value=True) as submit, patch.object(domains,'analyze') as analyze:
+            response = self.client.post('/domains/check-all')
+            self.assertEqual(response.status_code,302)
+            submit.assert_called_once()
+            analyze.assert_not_called()
+            self.client.post('/domains/check-all')
+            self.assertEqual(submit.call_count,1)
+
+    def test_empty_batch_not_submitted(self):
+        self.authenticate_as(self.client,1)
+        monitor.app.config['WTF_CSRF_ENABLED'] = False
+        with patch.object(domains,'submit_domain_checks') as submit:
+            self.client.post('/domains/check-all')
+            submit.assert_not_called()
+
+    def test_batch_prevents_overlapping_jobs_and_rapid_repeats(self):
+        future = MagicMock()
+        future.done.return_value = False
+        with patch.object(domains,'_batch_future',None), patch.object(domains,'_batch_last_started',0), patch.object(domains.time,'monotonic',return_value=100), patch.object(domains._batch_executor,'submit',return_value=future) as submit:
+            self.assertTrue(domains.submit_domain_checks())
+            self.assertTrue(domains.batch_running())
+            self.assertFalse(domains.submit_domain_checks())
+            future.done.return_value = True
+            self.assertFalse(domains.submit_domain_checks())
+            self.assertFalse(domains.batch_running())
+            submit.assert_called_once_with(domains.run_domains)
+
+    def test_paused_domain_skipped_in_batch(self):
+        domain_id = DomainFeatureTests.enroll(self)
+        with domains.connection() as conn:
+            conn.execute('UPDATE monitored_domains SET enabled=0 WHERE id=?',(domain_id,))
+        with patch.object(domains,'run_domain') as run, patch.object(domains,'deliver_domain_alerts'):
+            domains.run_domains()
+            run.assert_not_called()
+
+    def test_report_full_width_and_column_proportions(self):
+        self.authenticate_as(self.client,1)
+        monitor.app.config['WTF_CSRF_ENABLED'] = False
+        with patch.object(domains,'analyze',return_value=domain_report()):
+            html = self.client.post('/domains/lookup',data={'domain':'example.com'}).get_data(as_text=True)
+        self.assertIn('domain-report-summary',html)
+        self.assertNotIn('panel user-edit-form',html)
+        self.assertIn('<col style="width:20%"><col style="width:20%"><col style="width:60%">',html)
+
+    def test_configured_secrets_have_green_badge_without_exposure(self):
+        self.authenticate_as(self.client,1)
+        with domains.connection() as conn:
+            for key in ('spamrats_api_key','spamhaus_dqs_key','smtp_password'):
+                ext.set_setting(conn,key,'TESTNEVEREXPOSE')
+        html = self.client.get('/admin/settings').get_data(as_text=True)
+        self.assertEqual(html.count('class="credential-configured">Configurada'),3)
+        self.assertNotIn('TESTNEVEREXPOSE',html)
 
 
 class SettingsPageTests(unittest.TestCase):

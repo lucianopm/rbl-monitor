@@ -2,6 +2,8 @@
 
 ## Área Domínios — 15/10/2026 (em desenvolvimento)
 
+Após os ajustes de lote/DKIM/layout, 62 testes passaram. Os 12 testes adicionais cobrem descoberta limitada e múltiplos seletores, inconclusão, timeouts e achados parciais, seletor explícito, rejeição de chaves revogadas/duplicadas, autenticação/CSRF e limite da verificação em lote, exclusão de pausados, proporções de colunas e destaque de credenciais sem expor os valores. DNS segue simulado: disponibilidade de provedores e descoberta em domínios reais não foram homologadas no servidor.
+
 Após a reorganização do menu e das configurações, 50 testes passaram. Os oito novos testes cobrem página única/redirecionamentos, salvamento conjunto, preservação de segredos, rejeição sem gravação parcial, rollback em falha simulada de banco, números inválidos e formulários incompletos, inclusão de RBL no mesmo salvamento, ações de IP fora do menu global e acesso administrativo/CSRF.
 
 42 testes automatizados passaram em SQLite isolado, com DNS/SMTP simulados. Os 17 novos testes cobrem validação de nomes, códigos de provedores, teste de acesso, política DMARC herdada, privacidade da consulta pontual, limite por conta, autorização/CSRF, episódios, pausa e exclusão sem perda dos IPs, escopo de snapshots, seleção do agendamento e envio SMTP sem duplicação. Todos os templates compilaram e a sintaxe dos três scripts Bash foi validada. Não foram feitas consultas reais com credenciais de provedores nem envio SMTP real. Instalação e agendamento Linux/systemd continuam sujeitos à homologação no servidor.

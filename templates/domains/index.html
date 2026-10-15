@@ -1,6 +1,14 @@
 {% extends 'base.html' %}{% block content %}
 <section class="hero"><div class="eyebrow">REPUTAÇÃO E CONFIGURAÇÃO DNS</div><h1>Domínios</h1><p>Monitore seus domínios ou faça uma análise pontual sem cadastrá-los.</p></section>
 {% if user.is_admin %}<div class="actions"><a class="btn" href="{{ url_for('settings', _anchor='domains') }}">Configurações de domínios</a></div>{% endif %}
+<div class="area-actions">
+  <form method="post" action="{{ url_for('domains.check_all') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn primary" {% if not active_count or batch_running %}disabled{% endif %}>Verificar todos os domínios</button>
+  </form>
+  <span>{{ active_count }} domínio(s) ativo(s). {% if batch_running %}Verificação em andamento; atualize a página para acompanhar.{% else %}A verificação ocorre em segundo plano e ignora domínios pausados.{% endif %}</span>
+</div>
+<p class="summary-hint">Seletor DKIM vazio: tentativa automática de nomes comuns, incluindo Google, Microsoft 365 e SendGrid. Se souber o seletor exato, informe-o para consultar somente ele.</p>
 <div class="domain-columns">
 <section class="panel user-edit-form"><h2>Consulta pontual</h2><p>Para domínios próprios ou de terceiros. Não salva relatório, não cadastra e não gera alertas.</p>
 <form method="post" action="{{ url_for('domains.lookup') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label>Domínio<input name="domain" placeholder="example.com" maxlength="253" required></label><label>Seletor DKIM (opcional)<input name="selector" placeholder="selector1" maxlength="100"></label><button class="btn primary">Analisar agora</button></form></section>

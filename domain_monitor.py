@@ -33,6 +33,12 @@ def prevent_report_caching(response):
 suffixes = tldextract.TLDExtract(suffix_list_urls=(), cache_dir=None, include_psl_private_domains=True)
 _db = None
 _lock = threading.Lock()
+_batch_lock = threading.Lock()
+_batch_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='domain-batch')
+_batch_future = None
+_batch_last_started = 0.0
+# Bounded heuristic, not DNS enumeration or a universal DKIM selector.
+DKIM_CANDIDATES = ('google', 'selector1', 'selector2', 's1', 's2', 'default', 'dkim', 'k1')
 PROVIDERS = {
     'dbl': {'name': 'Spamhaus DBL (DQS)', 'zone': 'dbl.dq.spamhaus.net', 'test': 'dbltest.com',
             'link': 'https://www.spamhaus.org/faqs/domain-blocklist/'},
@@ -187,6 +193,37 @@ def txt_check(name, prefix):
     return {'status': 'PRESENT', 'records': matches, 'detail': 'Registro localizado; não comprova autenticação de mensagens.'}
 
 
+def check_dkim_selector(domain, selector):
+    result = txt_check(selector + '._domainkey.' + domain, '')
+    if result['status'] == 'PRESENT':
+        tags = parse_tags(result['records'][0])
+        if not tags.get('p') or tags.get('v', 'DKIM1').upper() != 'DKIM1':
+            result.update(status='INVALID', detail='Chave DKIM ausente, revogada ou formato inválido.')
+    return {**result, 'selector': selector}
+
+
+def check_dkim(domain, selector=''):
+    if selector:
+        result = check_dkim_selector(domain, selector)
+        return {**result, 'mode': 'explicit', 'attempts': [dict(result)],
+                'detail': 'Seletor informado: ' + selector + '. ' + result['detail']}
+    # Resolver follows CNAMEs while resolving TXT (e.g. SendGrid/Microsoft 365).
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        attempts = list(pool.map(lambda candidate: check_dkim_selector(domain, candidate), DKIM_CANDIDATES))
+    found = [row for row in attempts if row['status'] == 'PRESENT']
+    failures = [row for row in attempts if row['status'] in {'TIMEOUT', 'DNS_ERROR'}]
+    if found:
+        status = 'PRESENT'
+        detail = 'Descoberta por tentativa: ' + ', '.join(row['selector'] for row in found) + '. Registro localizado; não valida assinatura nem identifica necessariamente o seletor em uso.'
+        if failures:
+            detail += ' Houve falhas em outros seletores; consulta parcial.'
+    else:
+        status = 'DNS_ERROR' if any(row['status'] == 'DNS_ERROR' for row in failures) else 'TIMEOUT' if failures else 'INCONCLUSIVE'
+        detail = 'Nenhuma chave válida localizada nos seletores tentados. Isso não comprova ausência de DKIM; informe o seletor s= do cabeçalho DKIM-Signature de uma mensagem real.'
+    return dict(status=status, records=[row['selector'] + ': ' + record for row in found for record in row['records']],
+                detail=detail, mode='automatic', attempts=attempts)
+
+
 def check_auth(domain, selector):
     spf = txt_check(domain, 'v=spf1')
     if spf['status'] == 'PRESENT' and not re.match(r'^v=spf1(?:\s|$)', spf['records'][0], re.I):
@@ -207,14 +244,7 @@ def check_auth(domain, selector):
             dmarc['detail'] = ('Política herdada de ' + base + '. ' if inherited else '') + 'Política publicada: ' + policy
             if policy not in {'none', 'quarantine', 'reject'}:
                 dmarc.update(status='INVALID', detail='Política DMARC de subdomínios inválida.')
-    if selector:
-        dkim = txt_check(selector + '._domainkey.' + domain, '')
-        if dkim['status'] == 'PRESENT':
-            tags = parse_tags(dkim['records'][0])
-            if not tags.get('p') or tags.get('v', 'DKIM1').upper() != 'DKIM1':
-                dkim.update(status='INVALID', detail='Chave DKIM ausente, revogada ou formato inválido.')
-    else:
-        dkim = {'status': 'NOT_CHECKED', 'records': [], 'detail': 'Informe o seletor usado pelo remetente; não há descoberta automática de seletores.'}
+    dkim = check_dkim(domain, selector)
     state, mx = query(domain, 'MX')
     return {'SPF': spf, 'DMARC': dmarc, 'DKIM': dkim,
             'MX': {'status': 'PRESENT' if state == 'ANSWER' else state, 'records': mx,
@@ -239,7 +269,7 @@ def parse_tags(record):
 def analyze(domain, selector=''):
     domain, selector = normalize_domain(domain), normalize_selector(selector)
     settings = provider_settings()
-    # Four independent jobs bound each analysis to approximately six DNS timeouts.
+    # Provider queries and authentication run independently; DKIM probes are bounded.
     with ThreadPoolExecutor(max_workers=4) as pool:
         provider_jobs = [pool.submit(check_provider, domain, name, settings) for name in PROVIDERS]
         auth_job = pool.submit(check_auth, domain, selector)
@@ -337,6 +367,21 @@ def run_domains():
         deliver_domain_alerts()
 
 
+def batch_running():
+    with _batch_lock:
+        return _batch_future is not None and not _batch_future.done()
+
+
+def submit_domain_checks():
+    global _batch_future, _batch_last_started
+    with _batch_lock:
+        if (_batch_future is not None and not _batch_future.done()) or time.monotonic() - _batch_last_started < 30:
+            return False
+        _batch_future = _batch_executor.submit(run_domains)
+        _batch_last_started = time.monotonic()
+        return True
+
+
 def pending_count():
     with connection() as conn:
         return conn.execute('''SELECT COUNT(*) FROM domain_outbox o
@@ -375,7 +420,24 @@ def index():
         rows = conn.execute('''SELECT m.*,c.checked_at,c.status FROM monitored_domains m
             LEFT JOIN domain_checks c ON c.id=(SELECT id FROM domain_checks WHERE domain_id=m.id ORDER BY id DESC LIMIT 1)
             ORDER BY CASE c.status WHEN 'LISTED' THEN 0 WHEN 'ERROR' THEN 1 WHEN 'CLEAN' THEN 2 ELSE 3 END,m.domain''').fetchall()
-    return render_template('domains/index.html', rows=rows, report=None, providers=PROVIDERS, configured=provider_settings())
+    return render_template('domains/index.html', rows=rows, report=None, providers=PROVIDERS,
+                           configured=provider_settings(), batch_running=batch_running(),
+                           active_count=sum(bool(row['enabled']) for row in rows))
+
+
+@blueprint.post('/check-all')
+def check_all():
+    with connection() as conn:
+        count = conn.execute('SELECT COUNT(*) FROM monitored_domains WHERE enabled=1').fetchone()[0]
+    if not count:
+        flash('Nenhum domínio ativo para verificar.', 'error')
+    elif not reserve_request(g.user['id']):
+        flash('Aguarde 30 segundos entre consultas de domínio.', 'error')
+    elif not submit_domain_checks():
+        flash('Já existe uma verificação de domínios em andamento ou uma foi iniciada há menos de 30 segundos.', 'error')
+    else:
+        flash('Verificação dos domínios ativos iniciada em segundo plano. Atualize a página para acompanhar os resultados.', 'success')
+    return redirect(url_for('domains.index'))
 
 
 @blueprint.post('/lookup')

@@ -2,6 +2,9 @@
 
 ## Em desenvolvimento — 15/10/2026
 
+- Verificação em lote dos domínios ativos em segundo plano, protegida contra solicitações sobrepostas e repetidas.
+- DKIM vazio tenta oito seletores; relatório mostra tentativas, achados parciais e inconclusão sem afirmar ausência de DKIM. Seletor explícito mantém consulta exclusiva.
+- Relatório de domínio em largura total; tabela DNS com colunas 20%/20%/60%. Credenciais configuradas destacadas em verde.
 - Menu simplificado; inclusão e verificação de IPs restritas ao painel de IPs.
 - Configurações unificadas com categorias e salvamento transacional de RBLs de IP, domínios, SMTP e tempos. Validação completa antes de qualquer gravação; endereços antigos redirecionam para as categorias.
 

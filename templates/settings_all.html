@@ -13,11 +13,11 @@
   <section id="ip-rbls" class="panel settings-category">
     <div class="panel-head"><div><h2>RBL de IP</h2><p>Selecione as listas e configure os links e as credenciais.</p></div></div>
     <div class="settings-fields key-grid">
-      <label>Chave SpamRATS {{ '— configurada' if spamrats_configured else '' }}
+      <label>Chave SpamRATS {% if spamrats_configured %}<span class="credential-configured">Configurada</span>{% endif %}
         <input type="password" name="spamrats_api_key" autocomplete="new-password" placeholder="Vazio mantém a chave atual">
         <span class="smtp-checkbox-line"><input type="checkbox" name="remove_spamrats_api_key" {{ checked('remove_spamrats_api_key') }}> Remover chave</span>
       </label>
-      <label>Chave Spamhaus DQS {{ '— configurada' if spamhaus_configured else '' }}
+      <label>Chave Spamhaus DQS {% if spamhaus_configured %}<span class="credential-configured">Configurada</span>{% endif %}
         <input type="password" name="spamhaus_dqs_key" autocomplete="new-password" placeholder="Compartilhada por ZEN e DBL; vazio mantém">
         <span class="smtp-checkbox-line"><input type="checkbox" name="remove_spamhaus_dqs_key" {{ checked('remove_spamhaus_dqs_key') }}> Remover chave</span>
       </label>
@@ -52,7 +52,7 @@
       <label>Porta<input name="smtp_port" type="number" min="1" max="65535" value="{{ value('smtp_port', smtp.port) }}" required></label>
       <label>Segurança<select name="smtp_security">{% for code,label in [('starttls','STARTTLS'),('ssl','SSL/TLS direto'),('none','Sem TLS — somente rede confiável')] %}<option value="{{ code }}" {% if value('smtp_security',smtp.security)|trim == code %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
       <label>Usuário<input name="smtp_username" maxlength="254" value="{{ value('smtp_username',smtp.username) }}" autocomplete="off"></label>
-      <label>Senha {{ '— configurada' if password_configured else '' }}<input type="password" name="smtp_password" autocomplete="new-password" maxlength="1024" placeholder="Vazio mantém a senha atual">
+      <label>Senha {% if password_configured %}<span class="credential-configured">Configurada</span>{% endif %}<input type="password" name="smtp_password" autocomplete="new-password" maxlength="1024" placeholder="Vazio mantém a senha atual">
         <span class="smtp-checkbox-line"><input type="checkbox" name="clear_smtp_password" {{ checked('clear_smtp_password') }}> Remover senha</span>
       </label>
       <label>Remetente<input type="email" name="smtp_from" maxlength="254" value="{{ value('smtp_from',smtp.sender) }}"></label>

@@ -1,5 +1,22 @@
 {% if report %}
-<section class="panel user-edit-form"><h2>{{ report.domain }}</h2><p>Consulta: {{ report.checked_at|br_datetime }} · Resultado das listas: <strong>{{ report.status }}</strong></p><p>O resultado não é uma pontuação universal de reputação. Respostas DNS temporárias e falta de configuração não são listagens.</p></section>
+<section class="panel domain-report-summary"><h2>{{ report.domain }}</h2><p>Consulta: {{ report.checked_at|br_datetime }} · Resultado das listas: <strong>{{ report.status }}</strong></p><p>O resultado não é uma pontuação universal de reputação. Respostas DNS temporárias e falta de configuração não são listagens.</p></section>
 <section class="panel"><div class="panel-head"><h2>Listas de domínio</h2></div><div class="table-wrap"><table><thead><tr><th>Provedor</th><th>Domínio consultado</th><th>Estado</th><th>Detalhes</th></tr></thead><tbody>{% for row in report.providers %}<tr><td>{{ row.name }}</td><td>{{ row.domain }}</td><td><span class="badge {{ 'bad' if row.status == 'LISTED' else 'ok' if row.status == 'CLEAN' else 'warn' }}">{{ row.status }}</span></td><td>{{ row.detail }}</td></tr>{% endfor %}</tbody></table></div></section>
-<section class="panel"><div class="panel-head"><h2>Autenticação e DNS — inspeção de registros</h2></div><p class="user-edit-form">SPF não avalia autorização de um IP específico nem expande includes. DKIM requer seletor e não verifica assinaturas de mensagens. DMARC mostra política publicada/herdada, sem testar alinhamento. MX não mede reputação.</p><div class="table-wrap"><table><thead><tr><th>Verificação</th><th>Estado</th><th>Registros e detalhes</th></tr></thead><tbody>{% for name, row in report.auth.items() %}<tr><td>{{ name }}</td><td>{{ row.status }}</td><td>{{ row.detail }}{% for value in row.records %}<pre class="domain-record">{{ value }}</pre>{% endfor %}</td></tr>{% endfor %}</tbody></table></div></section>
+<section class="panel">
+  <div class="panel-head"><h2>Autenticação e DNS — inspeção de registros</h2></div>
+  <p class="domain-report-note">SPF não avalia autorização de um IP específico nem expande includes. Sem seletor informado, DKIM tenta nomes comuns, sem garantir descoberta completa nem validar assinaturas. DMARC mostra política publicada/herdada, sem testar alinhamento. MX não mede reputação.</p>
+  <div class="table-wrap"><table class="domain-auth-table">
+    <colgroup><col style="width:20%"><col style="width:20%"><col style="width:60%"></colgroup>
+    <thead><tr><th>Verificação</th><th>Estado</th><th>Registros e detalhes</th></tr></thead>
+    <tbody>{% for name, row in report.auth.items() %}
+      <tr><td>{{ name }}</td><td>{{ row.status }}</td><td>{{ row.detail }}
+        {% for value in row.records %}<pre class="domain-record">{{ value }}</pre>{% endfor %}
+        {% if name == 'DKIM' and row.attempts %}
+        <details class="dkim-attempts"><summary>Seletores consultados ({{ row.attempts|length }})</summary>
+          <ul>{% for attempt in row.attempts %}<li><strong>{{ attempt.selector }}</strong>: {{ attempt.status }} — {{ attempt.detail }}</li>{% endfor %}</ul>
+        </details>
+        {% endif %}
+      </td></tr>
+    {% endfor %}</tbody>
+  </table></div>
+</section>
 {% endif %}

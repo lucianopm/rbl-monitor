@@ -4,6 +4,8 @@ Aplicação web interna (Flask + SQLite) para verificar endereços IPv4/IPv6 em 
 
 ## Funcionalidades
 
+- Área separada de [Domínios](DOMINIOS.md): monitoramento com histórico/alertas, verificação de todos os ativos em segundo plano e consultas pontuais sem cadastro ou histórico. Inspeção DNS de SPF, DMARC, DKIM com seletor explícito ou tentativa automática limitada e MX. Spamhaus DBL, URIBL e SURBL opcionais, desabilitadas inicialmente.
+- Menu organizado por IPs e Domínios; ações de adicionar/verificar IPs ficam na área de IPs. Configurações unificadas em RBL de IP, Domínios, SMTP e Tempo de testes, com validação e salvamento das quatro categorias em uma única transação.
 - Dashboard com indicadores clicáveis, busca/filtros e paginação de 10, 20 ou 50 IPs. Ordem inicial: LISTED, ERRO, CLEAN e demais estados; ações em lote afetam os selecionados da página visível.
 - Cadastro, edição e exclusão de IPs; verificação automática em intervalos configuráveis e execução manual.
 - Consulta paralela de RBLs habilitadas, com classificação de `LISTED`, `CLEAN`, falhas de DNS, timeout e respostas não reconhecidas.
@@ -112,5 +114,3 @@ curl -fsS http://127.0.0.1:8080/health
 ```
 
 Este código é fornecido sem banco SQLite real, credenciais, `.env` ou chaves. A auditoria estática não substitui testes de implantação no seu servidor.
-- Área separada de [Domínios](DOMINIOS.md): monitoramento com histórico/alertas e consultas pontuais sem cadastro, histórico ou alertas. Inspeção DNS de SPF, DMARC, DKIM (com seletor) e MX; Spamhaus DBL, URIBL e SURBL opcionais, desabilitadas inicialmente.
-- Menu organizado por IPs e Domínios; ações de adicionar/verificar IPs ficam na área de IPs. Configurações unificadas em RBL de IP, Domínios, SMTP e Tempo de testes, com validação e salvamento das quatro categorias em uma única transação.
