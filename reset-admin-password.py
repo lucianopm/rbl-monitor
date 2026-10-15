@@ -3,6 +3,7 @@
 import getpass
 import os
 import sqlite3
+import secrets
 from datetime import datetime, timezone
 from pathlib import Path
 from werkzeug.security import generate_password_hash
@@ -18,8 +19,8 @@ def reset_password(database, username, password):
                 'SELECT id FROM users WHERE username=? AND is_admin=1', (username,)).fetchone()
             if not account:
                 raise ValueError('Conta administrativa não encontrada. Nada foi alterado.')
-            connection.execute('UPDATE users SET password_hash=?,active=1 WHERE id=?',
-                               (generate_password_hash(password), account[0]))
+            connection.execute('UPDATE users SET password_hash=?,active=1,session_token=? WHERE id=?',
+                               (generate_password_hash(password), secrets.token_hex(32), account[0]))
             connection.execute('DELETE FROM login_attempts WHERE username=?', (username,))
     finally:
         connection.close()

@@ -2,6 +2,8 @@
 
 `install.sh` instala do zero e cancela se detectar uma versão anterior, preservando seus dados. Use `update.sh` para atualizar. Uma reinstalação exige backup e remoção manual dos caminhos antigos previamente conferidos.
 
+**Instalação no próprio diretório (código atual main/dev):** o instalador prepara o ambiente na pasta em que `install.sh` está localizado. Não copia nem duplica os arquivos para `/opt`. Para escolher outro local, descompacte o pacote diretamente nele. `/opt/rbl-monitor` é apenas um exemplo recomendado. O release v1.2.0 ainda contém o instalador anterior; para usar esta mudança antes do próximo release, obtenha a branch atual (exemplo abaixo).
+
 ## 1. Pré-requisitos
 
 - Ubuntu Server ou Debian com `systemd` ativo (não é um instalador para Windows ou containers sem systemd).
@@ -24,6 +26,26 @@ cd rbl-monitor
 
 ## 3. Executar o instalador
 
+Para obter o código atual diretamente em `/opt/rbl-monitor-main`, sem depender do ZIP do release anterior:
+
+```bash
+cd /opt
+sudo curl -fL https://github.com/lucianopm/rbl-monitor/archive/refs/heads/main.zip -o rbl-monitor-main.zip
+sudo unzip rbl-monitor-main.zip
+cd rbl-monitor-main
+sudo bash install.sh
+```
+
+Se já descompactou um pacote atualizado no diretório desejado, basta executar o script dessa pasta. Exemplo em caminho personalizado (a pasta deve conter o pacote completo):
+
+```bash
+sudo bash /srv/rbl-monitor/install.sh
+# Alternativa: selecionar uma pasta já descompactada
+sudo bash install.sh --path /srv/rbl-monitor --port 8090
+```
+
+O caminho precisa ser uma pasta exclusiva da aplicação, sem espaços ou caracteres especiais, acessível pelo usuário de serviço `rblmonitor`. Não use `/root` ou uma pasta dentro de um HOME privado. O instalador não altera as permissões dos diretórios pais. Os arquivos ficam no local; apenas `.venv`, `.env`, `data/` e a unidade systemd são gerados ali. Há uma única instalação/serviço por servidor. Uma instalação existente em outro caminho não é apagada ou migrada automaticamente.
+
 ```bash
 sudo bash install.sh
 ```
@@ -39,14 +61,14 @@ O script executa automaticamente:
 1. Verificação do sistema, arquivos e sintaxe.
 2. Instalação do Python, venv, pip, OpenSSL e ferramentas necessárias.
 3. Cancelamento sem apagar dados ao encontrar instalação anterior.
-4. Criação do usuário de serviço `rblmonitor` e da pasta `/opt/rbl-monitor`.
-5. Instalação de bibliotecas Python em `/opt/rbl-monitor/.venv`.
+4. Criação do usuário de serviço `rblmonitor` e preparação da própria pasta do pacote.
+5. Instalação de bibliotecas Python em `.venv/` nessa pasta.
 6. Geração local de uma chave aleatória de sessão e senha inicial do administrador.
-7. Criação do SQLite em `/opt/rbl-monitor/data/monitor.db` e cadastro inicial de `admin`.
-8. Registro de `/opt/rbl-monitor/rbl-monitor.service` no systemd, inicialização e teste de `/health`.
+7. Criação do SQLite em `data/monitor.db` nessa pasta e cadastro inicial de `admin`.
+8. Registro de `rbl-monitor.service` dessa pasta no systemd, inicialização e teste de `/health`.
 9. Remoção da senha inicial em texto claro do `.env` após o primeiro cadastro.
 
-Anote a senha que aparece no terminal ao final. Se perder essa senha, o instalador não permite recuperá-la; uma recuperação administrativa deve alterar somente o hash da conta após backup e com o serviço parado.
+Anote a senha que aparece no terminal ao final. Se perder essa senha, use o script de recuperação descrito abaixo.
 
 O argumento `--yes` é aceito por compatibilidade e não permite sobrescrever instalações existentes.
 
@@ -61,6 +83,8 @@ O argumento `--yes` é aceito por compatibilidade e não permite sobrescrever in
 - Cadastre os IPs a monitorar.
 
 ## 5. Arquivos e permissões
+
+Nos exemplos seguintes, substitua `/opt/rbl-monitor` pelo diretório real. Não mova uma instalação pronta: `.env`, systemd e o ambiente Python contêm caminhos absolutos. Atualizador, timer e recuperação devem ser executados a partir dos scripts da instalação correta.
 
 ```text
 /opt/rbl-monitor/

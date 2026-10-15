@@ -3,7 +3,7 @@
 # Preserva DB, .env, config.json, rbls.json e a unidade systemd local.
 set -Eeuo pipefail
 umask 077
-APP_DIR=/opt/rbl-monitor
+APP_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 SERVICE=rbl-monitor.service
 REPO_URL='https://github.com/lucianopm/rbl-monitor.git'
 BRANCH=main
@@ -23,10 +23,10 @@ log() { printf '\n==> %s\n' "$*"; }
 fail() { printf 'ERRO: %s\n' "$*" >&2; exit 1; }
 usage() {
  cat <<'HELP'
-Uso: sudo bash /opt/rbl-monitor/update.sh --repo URL [--branch main] [--yes]
-     sudo bash /opt/rbl-monitor/update.sh [--yes]   # origem oficial por padrão
-     sudo bash /opt/rbl-monitor/update.sh --main   # versão estável
-     sudo bash /opt/rbl-monitor/update.sh --dev    # desenvolvimento
+Uso: sudo bash /CAMINHO/DA/INSTALACAO/update.sh --repo URL [--branch main] [--yes]
+     sudo bash ./update.sh [--yes]   # origem oficial por padrão
+     sudo bash ./update.sh --main    # versão estável
+     sudo bash ./update.sh --dev     # desenvolvimento
 
 Busca uma versão do Git em um diretório temporário, valida seus arquivos,
 prepara as dependências em outro virtualenv, cria backup e atualiza os arquivos
@@ -35,7 +35,7 @@ tenta reverter o código/dependências se houver falha.
 
 Por padrão usa https://github.com/lucianopm/rbl-monitor.git (main).
 Uma origem salva em .git-update.conf ou --repo pode substituir esse padrão.
-Os backups ficam em /opt/rbl-monitor/backups (recomenda-se cópia externa).
+Detecta a instalação na pasta do próprio script; backups ficam em backups/.
 Somente execute com repositórios Git de origem confiável.
 HELP
 }
@@ -51,12 +51,13 @@ while (($#)); do
  esac
 done
 [[ "$EUID" -eq 0 ]] || fail 'Execute usando sudo.'
+[[ "$APP_DIR" =~ ^/[A-Za-z0-9_./-]+$ && "$APP_DIR" != / ]] || fail 'Diretório da aplicação inválido; use caminho sem espaços/caracteres especiais.'
 [[ -d "$APP_DIR" && -f "$APP_DIR/.env" && -d "$APP_DIR/data" ]] || fail "Instalação não localizada em $APP_DIR"
 [[ -f "$APP_DIR/rbl-monitor.service" ]] || fail 'Unidade local do systemd ausente.'
 for local_file in .env config.json rbls.json rbl-monitor.service data/monitor.db; do
  [[ ! -L "$APP_DIR/$local_file" ]] || fail "Arquivo local não pode ser symlink: $local_file"
 done
-grep -qx 'RBL_MONITOR_DB=/opt/rbl-monitor/data/monitor.db' "$APP_DIR/.env" || fail 'O atualizador exige o caminho padrão de banco em .env.'
+grep -Fxq "RBL_MONITOR_DB=$APP_DIR/data/monitor.db" "$APP_DIR/.env" || fail 'O banco em .env deve apontar para data/monitor.db neste diretório. Não mova uma instalação ativa; consulte a documentação.'
 for cmd in git python3 curl systemctl tar mktemp flock; do command -v "$cmd" >/dev/null || fail "Dependência não disponível: $cmd"; done
 [[ ! -L "$APP_DIR/.update.lock" ]] || fail 'Lock não pode ser symlink.'
 exec 9>"$APP_DIR/.update.lock"

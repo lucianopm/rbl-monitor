@@ -1,5 +1,11 @@
 # Validação da entrega — 13/10/2026
 
+## Atualização de 14/10/2026 (main/dev, posterior ao release v1.2.0)
+
+24 testes automatizados passaram, incluindo login com sessão revogável, gestão de perfis, redefinição de senha com confirmação, exclusão sem perda de IPs, proteção da própria conta, CSRF e revogação de cookies após desativação, reativação e reutilização de ID. Todos os templates compilados. Sintaxe dos três scripts Bash e ajuda do instalador/atualizador conferidas.
+
+Instalação no próprio diretório, caminhos personalizados e agendamento foram revisados, mas não executados de ponta a ponta em Linux/systemd. O ambiente de validação é Windows. Não foram alterados usuários nem arquivos do servidor de produção. Ao aplicar a atualização, as sessões antigas serão invalidadas e os usuários precisarão entrar novamente.
+
 ## Atualização v1.1.0
 
 18 testes automatizados passaram na versão atual, incluindo paginação independente dos eventos, preservação da última verificação e recuperação de senha com preservação de dados. Sintaxe JavaScript do painel e Bash dos scripts conferidas. A seleção main/dev utiliza o mesmo fluxo de backup/rollback e salva o canal após sucesso. Troca completa de canal, timer e instalação Linux não foram executados neste ambiente; exigem homologação. Este relatório mantém abaixo o registro da consolidação inicial.

@@ -311,6 +311,8 @@ def setup(app, db_factory, config, rbl_file, run_one, run_all, retry_one=None):
     if "closure_reason" not in {row[1] for row in conn.execute("PRAGMA table_info(incidents)")}:
         conn.execute("ALTER TABLE incidents ADD COLUMN closure_reason TEXT NOT NULL DEFAULT ''")
     close_disabled_incidents(conn)
+    if "session_token" not in {row[1] for row in conn.execute("PRAGMA table_info(users)")}:
+        conn.execute("ALTER TABLE users ADD COLUMN session_token TEXT NOT NULL DEFAULT ''")
     secret = os.getenv("RBL_MONITOR_SECRET", "")
     if not secret or secret in {"change-this-secret", "CHANGE-ME"}:
         row = conn.execute("SELECT value FROM settings WHERE key='session_secret'").fetchone()
@@ -322,6 +324,7 @@ def setup(app, db_factory, config, rbl_file, run_one, run_all, retry_one=None):
         if len(password) < 10:
             raise RuntimeError("ADMIN_PASSWORD deve ter pelo menos 10 caracteres")
         conn.execute("INSERT INTO users(username,password_hash,is_admin) VALUES (?,?,1)", (os.getenv("ADMIN_USERNAME", "admin"), generate_password_hash(password)))
+    conn.execute("UPDATE users SET session_token=lower(hex(randomblob(32))) WHERE session_token=''")
     conn.commit()
     conn.close()
     app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax", SESSION_COOKIE_SECURE=os.getenv("COOKIE_SECURE", "0") == "1", PERMANENT_SESSION_LIFETIME=timedelta(hours=8), MAX_CONTENT_LENGTH=1024 * 1024)
@@ -335,7 +338,8 @@ def setup(app, db_factory, config, rbl_file, run_one, run_all, retry_one=None):
             g.user = None
             return None
         conn = _db()
-        g.user = conn.execute("SELECT id,username,is_admin FROM users WHERE id=? AND active=1", (session.get("user_id"),)).fetchone()
+        g.user = conn.execute("SELECT id,username,is_admin FROM users WHERE id=? AND active=1 AND session_token=?",
+                              (session.get("user_id"), session.get("user_token", ""))).fetchone()
         conn.close()
         # Nova verificação por IP é pública; demais operações continuam autenticadas.
         public = {"index", "ip_detail", "check_now", "retry_rbl_now", "static", "health", "login"}
@@ -376,6 +380,7 @@ def setup(app, db_factory, config, rbl_file, run_one, run_all, retry_one=None):
                 conn.close()
                 session.clear()
                 session["user_id"] = account["id"]
+                session["user_token"] = account["session_token"]
                 session.permanent = True
                 return redirect(url_for("index"))
             failures = attempt["failures"] + 1 if attempt and datetime.strptime(attempt["last_attempt"], "%Y-%m-%d %H:%M:%S") > datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(minutes=15) else 1
@@ -395,7 +400,9 @@ def setup(app, db_factory, config, rbl_file, run_one, run_all, retry_one=None):
             row = conn.execute("SELECT password_hash FROM users WHERE id=?", (g.user["id"],)).fetchone()
             password = request.form.get("password", "")
             if len(password) >= 10 and check_password_hash(row[0], request.form.get("current_password", "")):
-                conn.execute("UPDATE users SET password_hash=? WHERE id=?", (generate_password_hash(password), g.user["id"]))
+                token = secrets.token_hex(32)
+                conn.execute("UPDATE users SET password_hash=?,session_token=? WHERE id=?", (generate_password_hash(password), token, g.user["id"]))
+                session["user_token"] = token
                 conn.commit()
                 flash("Senha atualizada.", "success")
             else:
@@ -465,7 +472,7 @@ def setup(app, db_factory, config, rbl_file, run_one, run_all, retry_one=None):
             elif conn.execute("SELECT 1 FROM users WHERE username=?", (name,)).fetchone():
                 flash("Usuário já existe.", "error")
             else:
-                conn.execute("INSERT INTO users(username,password_hash,is_admin) VALUES (?,?,?)", (name, generate_password_hash(password), int(bool(request.form.get("is_admin")))))
+                conn.execute("INSERT INTO users(username,password_hash,is_admin,session_token) VALUES (?,?,?,?)", (name, generate_password_hash(password), int(bool(request.form.get("is_admin"))), secrets.token_hex(32)))
                 conn.commit()
                 flash("Usuário criado.", "success")
         rows = conn.execute("SELECT id,username,is_admin,active FROM users ORDER BY username").fetchall()
@@ -474,13 +481,67 @@ def setup(app, db_factory, config, rbl_file, run_one, run_all, retry_one=None):
     @app.post("/admin/users/<int:user_id>/toggle")
     @admin_required
     def user_toggle(user_id):
-        if user_id == g.user["id"]:
-            flash("Você não pode desativar sua própria conta.", "error")
-        else:
-            with _db() as conn:
-                conn.execute("UPDATE users SET active=1-active WHERE id=?", (user_id,))
+        return manage_user(user_id, "toggle")
+
+    def manage_user(user_id, action):
+        conn = _db()
+        try:
+            conn.execute("BEGIN IMMEDIATE")
+            actor = conn.execute("SELECT * FROM users WHERE id=? AND active=1 AND is_admin=1 AND session_token=?",
+                                 (g.user["id"], session.get("user_token", ""))).fetchone()
+            if not actor:
+                abort(403)
+            target = conn.execute("SELECT * FROM users WHERE id=?", (user_id,)).fetchone()
+            if not target:
+                abort(404)
+            if user_id == actor["id"]:
+                flash("Use Minha senha para sua conta. Não é permitido excluir, desativar ou alterar o próprio perfil aqui.", "error")
+                return redirect(url_for("users"))
+            role = request.form.get("role")
+            if action == "role" and role not in {"admin", "operator"}:
+                abort(400)
+            removes_admin = action == "delete" or (action == "toggle" and target["active"]) or (action == "role" and role == "operator")
+            admins = conn.execute("SELECT COUNT(*) FROM users WHERE active=1 AND is_admin=1").fetchone()[0]
+            if removes_admin and target["active"] and target["is_admin"] and admins <= 1:
+                flash("A última conta administrativa ativa deve ser preservada.", "error")
+                return redirect(url_for("users"))
+            if action == "password":
+                password = request.form.get("password", "")
+                if len(password) < 10 or password != request.form.get("password_confirm", ""):
+                    flash("Use senha de 10+ caracteres e confirmação idêntica.", "error")
+                    return redirect(url_for("users"))
+                conn.execute("UPDATE users SET password_hash=?,session_token=? WHERE id=?",
+                             (generate_password_hash(password), secrets.token_hex(32), user_id))
+                conn.execute("DELETE FROM login_attempts WHERE username=? COLLATE NOCASE", (target["username"],))
+            elif action == "delete":
+                conn.execute("DELETE FROM login_attempts WHERE username=? COLLATE NOCASE", (target["username"],))
+                conn.execute("DELETE FROM users WHERE id=?", (user_id,))
+            elif action == "role":
+                conn.execute("UPDATE users SET is_admin=?,session_token=? WHERE id=?",
+                             (int(role == "admin"), secrets.token_hex(32), user_id))
+            else:
+                conn.execute("UPDATE users SET active=1-active,session_token=? WHERE id=?", (secrets.token_hex(32), user_id))
+            conn.commit()
+            flash("Usuário excluído. IPs e histórico preservados." if action == "delete" else
+                  "Usuário atualizado. Sessões anteriores dessa conta foram invalidadas.", "success")
+        finally:
             conn.close()
         return redirect(url_for("users"))
+
+    @app.post("/admin/users/<int:user_id>/role")
+    @admin_required
+    def user_role(user_id):
+        return manage_user(user_id, "role")
+
+    @app.post("/admin/users/<int:user_id>/password")
+    @admin_required
+    def user_password(user_id):
+        return manage_user(user_id, "password")
+
+    @app.post("/admin/users/<int:user_id>/delete")
+    @admin_required
+    def user_delete(user_id):
+        return manage_user(user_id, "delete")
     @app.route("/admin/settings", methods=["GET", "POST"])
     @admin_required
     def settings():

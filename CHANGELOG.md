@@ -1,5 +1,12 @@
 # Alterações
 
+## Em desenvolvimento — 14/10/2026
+
+- Instalação no diretório do próprio pacote, sem cópia dos fontes; --path seleciona outro pacote já descompactado.
+- Atualizador e agendamento detectam o caminho local, mantendo compatibilidade com instalações em /opt/rbl-monitor.
+- Administradores podem alterar perfis, redefinir senhas e excluir outras contas; proteção da última conta administrativa e bloqueio de ações destrutivas sobre si mesmo.
+- Tokens individuais de sessão são renovados ao mudar acesso; cookies antigos deixam de autorizar a conta, inclusive após exclusão e reutilização de um ID.
+
 ## v1.2.0 — 13/10/2026
 
 - Licença permissiva personalizada com referência visível obrigatória ao projeto original no rodapé/créditos.

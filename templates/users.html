@@ -1,3 +1,45 @@
-{% extends 'base.html' %}{% block content %}<h1>Usuários</h1><p>Operadores gerenciam IPs, verificações e observações. Administradores também gerenciam configurações, RBLs e usuários.</p>
-<div class="form-panel"><form method="post"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label>Usuário<input name="username" minlength="3" maxlength="80" required></label><label>Senha inicial<input type="password" name="password" minlength="10" required autocomplete="new-password"></label><label class="check"><input type="checkbox" name="is_admin">Administrador</label><button class="btn primary">Criar usuário</button></form></div>
-<div class="panel table-wrap"><table><thead><tr><th>Usuário</th><th>Perfil</th><th>Estado</th><th></th></tr></thead><tbody>{% for account in users %}<tr><td>{{ account.username }}</td><td>{{ 'Administrador' if account.is_admin else 'Operador' }}</td><td>{{ 'Ativo' if account.active else 'Desativado' }}</td><td>{% if account.id != user.id %}<form method="post" action="{{ url_for('user_toggle', user_id=account.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn">{{ 'Desativar' if account.active else 'Ativar' }}</button></form>{% endif %}</td></tr>{% endfor %}</tbody></table></div>{% endblock %}
+{% extends 'base.html' %}
+{% block content %}
+<section class="hero"><h1>Usuários</h1><p>Operadores gerenciam IPs e verificações. Administradores também gerenciam configurações e contas.</p></section>
+<details class="panel event-panel">
+  <summary class="panel-head"><h2>Criar usuário</h2></summary>
+  <form method="post" class="user-edit-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <label>Usuário<input name="username" minlength="3" maxlength="80" required autocomplete="off"></label>
+    <label>Senha inicial<input type="password" name="password" minlength="10" required autocomplete="new-password"></label>
+    <label class="check"><input type="checkbox" name="is_admin">Administrador</label>
+    <button class="btn primary">Criar usuário</button>
+  </form>
+</details>
+{% for account in users %}
+<details class="panel event-panel">
+  <summary class="panel-head"><h2>{{ account.username }}{% if account.id == user.id %} <small>(você)</small>{% endif %}</h2><span>{{ 'Administrador' if account.is_admin else 'Operador' }} · {{ 'Ativo' if account.active else 'Desativado' }}</span></summary>
+  <div class="user-edit-form">
+  {% if account.id == user.id %}
+    <p>Para alterar sua senha, use <a class="link" href="{{ url_for('account') }}">Minha senha</a>. As demais ações sobre sua conta só podem ser feitas por outro administrador.</p>
+  {% else %}
+    <form method="post" action="{{ url_for('user_role', user_id=account.id) }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <label>Permissão de {{ account.username }}
+        <select name="role"><option value="operator" {% if not account.is_admin %}selected{% endif %}>Operador</option><option value="admin" {% if account.is_admin %}selected{% endif %}>Administrador</option></select>
+      </label>
+      <button class="btn">Salvar permissão</button>
+    </form>
+    <details class="user-password-panel"><summary>Redefinir senha de {{ account.username }}</summary>
+      <form method="post" action="{{ url_for('user_password', user_id=account.id) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label>Nova senha<input type="password" name="password" minlength="10" required autocomplete="new-password"></label>
+        <label>Confirme a nova senha<input type="password" name="password_confirm" minlength="10" required autocomplete="new-password"></label>
+        <button class="btn">Redefinir senha</button>
+      </form>
+    </details>
+    <div class="incident-controls">
+      <form method="post" action="{{ url_for('user_toggle', user_id=account.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn">{{ 'Desativar' if account.active else 'Ativar' }}</button></form>
+      <form method="post" action="{{ url_for('user_delete', user_id=account.id) }}" onsubmit="return confirm('Excluir definitivamente esta conta? IPs e histórico serão preservados.');"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn danger">Excluir usuário</button></form>
+    </div>
+    <p class="panel-subtitle">Alterações de acesso encerram as sessões anteriores desta conta. A exclusão é definitiva e não apaga IPs ou histórico.</p>
+  {% endif %}
+  </div>
+</details>
+{% endfor %}
+{% endblock %}

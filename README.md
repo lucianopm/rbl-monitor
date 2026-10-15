@@ -43,7 +43,7 @@ Painel com indicadores e paginação. Os três IPs cadastrados foram ocultados u
 ## Arquitetura simples
 
 - **Servidor:** Gunicorn (uma instância worker), porta TCP **8080**, sem NGINX.
-- **Diretório único:** `/opt/rbl-monitor` contém código, templates, arquivos locais, `.venv`, `.env`, `data/monitor.db`, `backups` e o script de atualização.
+- **Diretório único:** o código atual instala na própria pasta descompactada, sem copiar fontes. `/opt/rbl-monitor` é um exemplo; o caminho escolhido contém `.venv`, `.env`, `data/monitor.db`, backups e scripts. Consulte [INSTALACAO.md](INSTALACAO.md) para caminhos personalizados e compatibilidade com releases antigos.
 - **systemd:** é necessário somente um link de registro do serviço em `/etc/systemd/system/`.
 - **Persistência:** SQLite, sem MySQL/PostgreSQL ou Docker.
 - **Requisitos:** Ubuntu/Debian com `systemd`, Python 3.10 ou superior com `venv`, Internet para dependências APT/PyPI, DNS funcional, acesso `sudo`.
@@ -62,6 +62,8 @@ sudo bash install.sh
 ```
 
 Acesse `http://IP_DO_SERVIDOR:8080/login`. O script exibe a senha inicial `admin` uma única vez.
+
+O instalador no próprio diretório e a gestão ampliada de usuários estão disponíveis no código atual `main`/`dev`; o release v1.2.0 mantém o comportamento anterior. Para instalação com o código atual antes do próximo release, veja [INSTALACAO.md](INSTALACAO.md).
 
 O pacote de instalação dos releases é `rbl-monitor.zip`, incluindo o release v1.1.0. Após extrair, a pasta da aplicação é `rbl-monitor/`.
 

@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
-# RBL Monitor - instalacao integral em /opt/rbl-monitor (Ubuntu/Debian).
-# Para reinstalar, remove somente os locais conhecidos do RBL Monitor.
+# RBL Monitor - instalação no diretório do pacote, sem cópia dos fontes.
 set -Eeuo pipefail
 umask 077
 
-APP_DIR=/opt/rbl-monitor
+APP_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 APP_USER=rblmonitor
 SERVICE_NAME=rbl-monitor.service
 SERVICE_LINK=/etc/systemd/system/rbl-monitor.service
@@ -17,10 +16,12 @@ fail() { printf '\nERRO: %s\n' "$*" >&2; exit 1; }
 trap 'echo "Falha na linha $LINENO; diagnostico: sudo journalctl -u rbl-monitor -n 80 --no-pager" >&2' ERR
 usage() {
 cat <<'HELP'
-Uso: sudo bash install.sh [--yes] [--port 8080]
+Uso: sudo bash install.sh [--path /caminho/do/pacote] [--port 8080]
 
 Instalacao limpa de RBL Monitor (Ubuntu/Debian com systemd).
-Todos os arquivos da aplicacao ficam em /opt/rbl-monitor, incluindo
+Instala onde este script foi descompactado, sem copiar os fontes.
+--path seleciona outro diretório que JÁ contenha o pacote descompactado.
+Todos os arquivos da aplicacao ficam nesse diretório, incluindo
 configuracao .env, banco SQLite, .venv, unidade systemd e logs via journalctl.
 A unica referencia fora do diretorio e o registro obrigatorio do servico
 no systemd (links gerenciados pelo sistema).
@@ -33,6 +34,7 @@ HELP
 while (( $# )); do
   case "$1" in
     --yes) CONFIRMED=1; shift ;;
+    --path) (( $# >= 2 )) || fail 'Use --path DIRETORIO'; APP_DIR="$2"; shift 2 ;;
     --port) (( $# >= 2 )) || fail 'Use --port NUMERO'; PORT="$2"; shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *) fail "Parametro desconhecido: $1" ;;
@@ -49,16 +51,24 @@ command -v apt-get >/dev/null || fail 'apt-get nao encontrado.'
 [[ "$PORT" =~ ^[0-9]{1,5}$ ]] || fail 'Porta invalida.'
 PORT=$((10#$PORT))
 (( PORT >= 1024 && PORT <= 65535 )) || fail 'Use uma porta entre 1024 e 65535.'
-[[ "$SOURCE" != "$APP_DIR" ]] || fail 'Extraia o ZIP em outro local, por exemplo seu HOME, antes de executar.'
+[[ -d "$APP_DIR" && ! -L "$APP_DIR" ]] || fail 'Diretório do pacote não encontrado ou é symlink.'
+APP_DIR="$(cd -- "$APP_DIR" && pwd -P)"
+[[ "$APP_DIR" =~ ^/[A-Za-z0-9_./-]+$ && "$APP_DIR" != / && "$APP_DIR" != /root && "$APP_DIR" != /home && "$APP_DIR" != /opt && "$APP_DIR" != /srv && "$APP_DIR" != /tmp && "$APP_DIR" != /usr && "$APP_DIR" != /etc ]] || fail 'Escolha uma pasta exclusiva da aplicação, sem espaços/caracteres especiais.'
+SOURCE="$APP_DIR"
+for local_path in data .venv .env rbl-monitor.service; do
+  [[ ! -L "$APP_DIR/$local_path" ]] || fail "Caminho local não pode ser symlink: $local_path"
+done
 for file in app.py extensions.py wsgi.py requirements.txt config.json rbls.json README.md install.sh update.sh; do
   [[ -f "$SOURCE/$file" && ! -L "$SOURCE/$file" ]] || fail "Arquivo ausente: $file"
 done
 [[ -d "$SOURCE/templates" && -d "$SOURCE/static" ]] || fail 'Pastas templates/static ausentes.'
 [[ -z "$(find "$SOURCE/templates" "$SOURCE/static" -type l -print -quit)" ]] || fail 'Templates/static não podem conter symlinks.'
 
-# Caminhos EXATOS de versoes antigas; nao toca em sites/servicos de terceiros.
+# Detecta estado persistente; a presença dos fontes é esperada e não é erro.
 OLD_PATHS=(
-  "$APP_DIR"
+  "$APP_DIR/.env"
+  "$APP_DIR/data/monitor.db"
+  "$APP_DIR/.venv"
   /var/lib/rbl-monitor
   /etc/rbl-monitor.env
   "$SERVICE_LINK"
@@ -81,7 +91,7 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get install -y python3 python3-venv python3-pip openssl curl ca-certificates git
 
-log 'Validando o pacote antes de apagar arquivos anteriores'
+log 'Validando o pacote sem alterar arquivos anteriores'
 python3 - "$SOURCE" <<'PY_CHECK'
 import json, pathlib, sys
 assert sys.version_info >= (3,10), 'Python 3.10 ou superior necessário'
@@ -92,22 +102,17 @@ for name in ('app.py','extensions.py','wsgi.py'):
     compile((p/name).read_bytes(),str(p/name),'exec')
 PY_CHECK
 
-log 'Copiando a aplicacao para um unico diretorio'
+log "Preparando instalação no próprio diretório: $APP_DIR"
 if ! id "$APP_USER" &>/dev/null; then
   useradd --system --user-group --home-dir "$APP_DIR" --shell /usr/sbin/nologin "$APP_USER"
 else
   usermod --home "$APP_DIR" "$APP_USER"
 fi
-install -d -m 0755 -o root -g root "$APP_DIR"
+if [[ ! -x /usr/sbin/runuser ]]; then fail 'runuser não encontrado.'; fi
+# Não altera permissões dos diretórios pais, que podem guardar dados pessoais.
+/usr/sbin/runuser -u "$APP_USER" -- test -x "$APP_DIR" || fail 'O usuário rblmonitor não consegue acessar o diretório. Extraia em uma pasta acessível como /opt/rbl-monitor ou /srv/rbl-monitor; não use /root.'
 install -d -m 0700 -o "$APP_USER" -g "$APP_USER" "$APP_DIR/data"
-for name in app.py extensions.py wsgi.py requirements.txt config.json rbls.json install.sh update.sh README.md; do
-  install -m 0644 "$SOURCE/$name" "$APP_DIR/$name"
-done
 chmod 0755 "$APP_DIR/install.sh" "$APP_DIR/update.sh"
-for name in INSTALACAO.md USO.md ATUALIZACAO_GIT.md SEGURANCA.md VALIDACAO.md TROUBLESHOOTING.md CHANGELOG.md LICENSE .gitignore .env.example enable-auto-update.sh reset-admin-password.py; do
-  [[ ! -f "$SOURCE/$name" ]] || install -m 0644 "$SOURCE/$name" "$APP_DIR/$name"
-done
-cp -a -- "$SOURCE/templates" "$SOURCE/static" "$APP_DIR/"
 
 log 'Preparando Python e instalando bibliotecas'
 python3 -m venv "$APP_DIR/.venv"
@@ -153,7 +158,11 @@ NoNewPrivileges=true
 WantedBy=multi-user.target
 EOF
 # SQLite precisa criar arquivos -wal e -shm junto ao banco principal.
-chown -R "root:$APP_USER" "$APP_DIR"
+chown "root:$APP_USER" "$APP_DIR"
+find "$APP_DIR" -maxdepth 1 -type f ! -name '.env' -exec chown "root:$APP_USER" {} +
+find "$APP_DIR" -maxdepth 1 -type f ! -name '.env' -exec chmod 0644 {} +
+chmod 0755 "$APP_DIR/install.sh" "$APP_DIR/update.sh"
+chown -R "root:$APP_USER" "$APP_DIR/.venv" "$APP_DIR/templates" "$APP_DIR/static"
 chown root:root "$APP_DIR/.env"
 chown -R "$APP_USER:$APP_USER" "$APP_DIR/data"
 chmod 0700 "$APP_DIR/data"

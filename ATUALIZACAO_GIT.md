@@ -4,6 +4,10 @@ O GitHub é a fonte para obter a versão mais atual do RBL Monitor. O `update.sh
 
 ## 1. Atualizar servidor já instalado
 
+Os exemplos usam `/opt/rbl-monitor`. Em uma instalação personalizada, substitua esse caminho pelo diretório onde o pacote foi descompactado e instalado. `update.sh` detecta sua própria pasta, exige banco em `data/monitor.db` dentro dela e preserva as configurações locais. O script de agendamento também gera sua unidade com esse caminho. Não mova uma instalação ativa: o serviço e o ambiente Python têm caminhos absolutos.
+
+Esta atualização invalida sessões de versões anteriores; faça login novamente após aplicar. Mudanças de senha, perfil e estado dos usuários também revogam suas sessões antigas.
+
 O repositório oficial e a branch `main` são usados por padrão, inclusive na primeira execução:
 
 ```bash

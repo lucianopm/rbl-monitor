@@ -23,6 +23,8 @@ class MonitorTests(unittest.TestCase):
         self.client = monitor.app.test_client()
         monitor.app.config.update(TESTING=True, WTF_CSRF_ENABLED=True)
         with monitor.db() as conn:
+            conn.execute('DELETE FROM users WHERE id<>1')
+            conn.execute("UPDATE users SET active=1,is_admin=1 WHERE id=1")
             conn.execute('DELETE FROM monitored_ips')
             conn.execute('DELETE FROM settings')
             cur = conn.execute('INSERT INTO monitored_ips(ip,description,created_at) VALUES (?,?,?)',
@@ -33,6 +35,106 @@ class MonitorTests(unittest.TestCase):
     def result(self, status='LISTED'):
         return dict(name='SpamCop', zone='bl.spamcop.net', status=status,
                     response='127.0.0.2', duration_ms=1)
+
+    def authenticate_as(self, client, user_id):
+        with monitor.db() as conn:
+            token = conn.execute('SELECT session_token FROM users WHERE id=?', (user_id,)).fetchone()[0]
+        conn.close()
+        with client.session_transaction() as session:
+            session['user_id'] = user_id
+            session['user_token'] = token
+
+    def add_test_user(self, admin=False):
+        from werkzeug.security import generate_password_hash
+        import secrets
+        with monitor.db() as conn:
+            cursor = conn.execute('INSERT INTO users(username,password_hash,is_admin,session_token) VALUES (?,?,?,?)',
+                                  ('other', generate_password_hash('other-test-password'), int(admin), secrets.token_hex(32)))
+            user_id = cursor.lastrowid
+        conn.close()
+        return user_id
+
+    def test_admin_role_change_revokes_sessions(self):
+        user_id = self.add_test_user(admin=True)
+        other_client = monitor.app.test_client()
+        self.authenticate_as(other_client, user_id)
+        self.authenticate_as(self.client, 1)
+        monitor.app.config['WTF_CSRF_ENABLED'] = False
+        self.assertEqual(self.client.post(f'/admin/users/{user_id}/role', data={'role':'operator'}).status_code, 302)
+        self.assertEqual(other_client.get('/admin/settings').status_code, 302)
+        self.authenticate_as(other_client, user_id)
+        self.assertEqual(other_client.get('/admin/settings').status_code, 403)
+        self.assertEqual(other_client.post('/admin/users/1/delete').status_code, 403)
+
+    def test_login_sets_revocable_session(self):
+        from werkzeug.security import generate_password_hash
+        with monitor.db() as conn:
+            conn.execute('UPDATE users SET password_hash=? WHERE id=1', (generate_password_hash('login-test-password'),))
+        conn.close()
+        monitor.app.config['WTF_CSRF_ENABLED'] = False
+        response = self.client.post('/login', data={'username':'admin','password':'login-test-password'})
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self.client.get('/admin/users').status_code, 200)
+        with self.client.session_transaction() as session:
+            self.assertTrue(session.get('user_token'))
+        with monitor.db() as conn:
+            conn.execute("UPDATE users SET session_token='changed-test-token' WHERE id=1")
+        conn.close()
+        self.assertEqual(self.client.get('/admin/users').status_code, 302)
+
+    def test_deactivate_reactivate_does_not_restore_old_session(self):
+        user_id = self.add_test_user()
+        other_client = monitor.app.test_client()
+        self.authenticate_as(other_client, user_id)
+        self.authenticate_as(self.client, 1)
+        monitor.app.config['WTF_CSRF_ENABLED'] = False
+        self.client.post(f'/admin/users/{user_id}/toggle')
+        self.assertEqual(other_client.get('/account').status_code, 302)
+        self.client.post(f'/admin/users/{user_id}/toggle')
+        self.assertEqual(other_client.get('/account').status_code, 302)
+        self.assertEqual(self.client.post('/admin/users/99999/delete').status_code, 404)
+
+    def test_admin_password_reset_validates_and_revokes(self):
+        from werkzeug.security import check_password_hash
+        user_id = self.add_test_user()
+        other_client = monitor.app.test_client()
+        self.authenticate_as(other_client, user_id)
+        self.authenticate_as(self.client, 1)
+        monitor.app.config['WTF_CSRF_ENABLED'] = False
+        self.client.post(f'/admin/users/{user_id}/password', data={'password':'new-test-password', 'password_confirm':'different'})
+        self.assertEqual(other_client.get('/account').status_code, 200)
+        self.client.post(f'/admin/users/{user_id}/password', data={'password':'new-test-password', 'password_confirm':'new-test-password'})
+        self.assertEqual(other_client.get('/account').status_code, 302)
+        with monitor.db() as conn:
+            hashed = conn.execute('SELECT password_hash FROM users WHERE id=?', (user_id,)).fetchone()[0]
+            self.assertTrue(check_password_hash(hashed, 'new-test-password'))
+        conn.close()
+
+    def test_delete_user_preserves_ips_and_prevents_session_id_reuse(self):
+        user_id = self.add_test_user()
+        other_client = monitor.app.test_client()
+        self.authenticate_as(other_client, user_id)
+        self.authenticate_as(self.client, 1)
+        monitor.app.config['WTF_CSRF_ENABLED'] = False
+        self.assertEqual(self.client.post(f'/admin/users/{user_id}/delete').status_code, 302)
+        replacement = self.add_test_user()
+        self.assertEqual(replacement, user_id)
+        self.assertEqual(other_client.get('/account').status_code, 302)
+        with monitor.db() as conn:
+            self.assertEqual(conn.execute('SELECT COUNT(*) FROM monitored_ips').fetchone()[0], 1)
+        conn.close()
+
+    def test_admin_self_actions_blocked_and_csrf_required(self):
+        self.authenticate_as(self.client, 1)
+        for action in ('role', 'password', 'toggle', 'delete'):
+            self.assertEqual(self.client.post(f'/admin/users/1/{action}').status_code, 400)
+        monitor.app.config['WTF_CSRF_ENABLED'] = False
+        for action in ('role', 'password', 'toggle', 'delete'):
+            self.client.post(f'/admin/users/1/{action}', data={'role':'operator'})
+        with monitor.db() as conn:
+            row = conn.execute('SELECT active,is_admin FROM users WHERE id=1').fetchone()
+            self.assertEqual(tuple(row), (1,1))
+        conn.close()
 
     def test_public_and_protected_routes(self):
         for url in ('/', '/login', '/health', f'/ip/{self.ip_id}'):
@@ -117,6 +219,9 @@ class MonitorTests(unittest.TestCase):
     def test_admin_pages_render(self):
         with self.client.session_transaction() as session:
             session['user_id'] = 1
+            with monitor.db() as conn:
+                session['user_token'] = conn.execute('SELECT session_token FROM users WHERE id=1').fetchone()[0]
+            conn.close()
         for url in ('/admin/smtp', '/admin/rbls', '/admin/users', '/admin/settings', '/account'):
             self.assertEqual(self.client.get(url).status_code, 200, url)
 
@@ -210,6 +315,9 @@ class MonitorTests(unittest.TestCase):
         monitor.app.config['WTF_CSRF_ENABLED'] = False
         with self.client.session_transaction() as session:
             session['user_id'] = 1
+            with monitor.db() as conn:
+                session['user_token'] = conn.execute('SELECT session_token FROM users WHERE id=1').fetchone()[0]
+            conn.close()
         for action in ('ignore', 'unignore', 'dismiss'):
             self.assertEqual(self.client.post(f'/incident/{incident_id}/{action}').status_code, 302)
         with monitor.db() as conn:
