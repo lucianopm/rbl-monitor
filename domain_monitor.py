@@ -481,6 +481,8 @@ def delete(domain_id):
 @blueprint.route('/providers', methods=['GET', 'POST'])
 @admin_required
 def providers():
+    if request.method == 'GET':
+        return redirect(url_for('settings', _anchor='domains'))
     if request.method == 'POST':
         selected = {name: name in request.form for name in PROVIDERS}
         if any(selected.values()) and 'access_confirmed' not in request.form:

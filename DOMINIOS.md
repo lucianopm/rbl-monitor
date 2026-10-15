@@ -11,7 +11,7 @@ Informe somente o nome, como example.com ou mail.example.com, sem protocolo, por
 
 ## Listas e condições de acesso
 
-Todas as listas começam desabilitadas. Em Configurar listas de domínio, habilite apenas as que você tem autorização para usar e confirme as condições de acesso dos provedores:
+Todas as listas começam desabilitadas. Em **Configurações → Domínios**, habilite apenas as que você tem autorização para usar e confirme as condições de acesso dos provedores. Salve junto com as demais categorias pelo botão **Salvar todas as configurações**:
 
 - [Spamhaus DBL](https://www.spamhaus.org/faqs/domain-blocklist/): usa DQS e a chave protegida já configurada no painel RBLs. Consulta o nome exato informado; não confundir com a ZEN de IPs.
 - [URIBL MULTI](https://uribl.com/about.shtml): consulta o domínio registrável; classifica black como LISTED e grey/red como NOTICE.

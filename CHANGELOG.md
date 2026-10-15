@@ -2,6 +2,9 @@
 
 ## Em desenvolvimento — 15/10/2026
 
+- Menu simplificado; inclusão e verificação de IPs restritas ao painel de IPs.
+- Configurações unificadas com categorias e salvamento transacional de RBLs de IP, domínios, SMTP e tempos. Validação completa antes de qualquer gravação; endereços antigos redirecionam para as categorias.
+
 - Área independente de domínios, com consultas pontuais sem persistência do relatório e monitoramento agendado com histórico, episódios e SMTP.
 - Inspeção de SPF, DMARC, DKIM e MX; DBL/URIBL/SURBL opcionais, teste de acesso e códigos específicos de cada provedor.
 - Limite por conta, proteção CSRF e relatórios sem cache; dependência tldextract com PSL offline.

@@ -8,6 +8,16 @@
   </div>
 </section>
 
+{% if user %}
+<div class="area-actions" aria-label="Ações de IPs">
+  <a href="{{ url_for('new_ip') }}" class="btn primary">+ Adicionar IP</a>
+  <form method="post" action="{{ url_for('check_all') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn" type="submit">Verificar todos os IPs</button>
+  </form>
+</div>
+{% endif %}
+
 <div class="cards">
   <button type="button" class="card summary-card" data-summary="ALL"><span class="label">IPs cadastrados</span><span class="value">{{ stats.total }}</span><small>Todos os endereços</small></button>
   <button type="button" class="card summary-card" data-summary="ACTIVE"><span class="label">Monitoramento ativo</span><span class="value">{{ stats.active }}</span><small>Habilitados para consulta</small></button>

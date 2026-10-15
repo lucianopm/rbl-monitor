@@ -113,3 +113,4 @@ curl -fsS http://127.0.0.1:8080/health
 
 Este código é fornecido sem banco SQLite real, credenciais, `.env` ou chaves. A auditoria estática não substitui testes de implantação no seu servidor.
 - Área separada de [Domínios](DOMINIOS.md): monitoramento com histórico/alertas e consultas pontuais sem cadastro, histórico ou alertas. Inspeção DNS de SPF, DMARC, DKIM (com seletor) e MX; Spamhaus DBL, URIBL e SURBL opcionais, desabilitadas inicialmente.
+- Menu organizado por IPs e Domínios; ações de adicionar/verificar IPs ficam na área de IPs. Configurações unificadas em RBL de IP, Domínios, SMTP e Tempo de testes, com validação e salvamento das quatro categorias em uma única transação.

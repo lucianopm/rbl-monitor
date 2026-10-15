@@ -60,6 +60,10 @@ O sistema cria uma notificação quando abre um incidente novo em RBL habilitada
 
 Em **Configurações**, ajuste o intervalo em minutos e o timeout DNS. Consultas dependem da conectividade externa, do resolvedor em uso e das regras de cada serviço DNSBL. A opção `check_on_start` em `config.json` controla se há uma varredura ao iniciar o serviço.
 
+O menu principal separa IPs, Domínios, Configurações, Usuários e Minha conta. Adicionar IP e Verificar todos os IPs ficam exclusivamente no painel de IPs. Administradores encontram todas as opções operacionais em **Configurações**, nas categorias **RBL de IP**, **Domínios**, **SMTP e alertas** e **Tempo de testes**. Os links de categoria navegam pela mesma página.
+
+O botão **Salvar todas as configurações** valida e grava as quatro categorias juntas. Se houver erro em qualquer categoria, nenhuma alteração será salva. Edições não sensíveis ficam no formulário para correção; senhas/chaves digitadas precisam ser preenchidas novamente. Campos secretos vazios mantêm o valor anterior; use a opção de remoção para apagá-los. Uma RBL personalizada também pode ser incluída nesse salvamento e começa desativada. SMTP vazio é aceito se os alertas estiverem desabilitados. **Enviar e-mail de teste** é uma ação separada que usa os valores já salvos, sem salvar o formulário.
+
 ## Domínios
 
 A área Domínios oferece dois fluxos independentes: cadastro para monitoramento automático com histórico/alertas e consulta pontual sem cadastro ou gravação do relatório. Veja [DOMINIOS.md](DOMINIOS.md) para configurar listas, interpretar resultados e entender as limitações de SPF, DMARC e DKIM.

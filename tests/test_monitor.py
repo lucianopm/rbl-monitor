@@ -141,7 +141,7 @@ class MonitorTests(unittest.TestCase):
 
     def test_public_and_protected_routes(self):
         for url in ('/', '/login', '/health', f'/ip/{self.ip_id}'):
-            self.assertEqual(self.client.get(url).status_code, 200, url)
+            self.assertEqual(self.client.get(url, follow_redirects=True).status_code, 200, url)
         self.assertEqual(self.client.get('/admin/smtp').status_code, 302)
 
     def test_csrf_enforced(self):
@@ -239,7 +239,7 @@ class MonitorTests(unittest.TestCase):
                 session['user_token'] = conn.execute('SELECT session_token FROM users WHERE id=1').fetchone()[0]
             conn.close()
         for url in ('/admin/smtp', '/admin/rbls', '/admin/users', '/admin/settings', '/account'):
-            self.assertEqual(self.client.get(url).status_code, 200, url)
+            self.assertEqual(self.client.get(url, follow_redirects=True).status_code, 200, url)
 
     def test_dnsbl_clean_listed_timeout(self):
         import dns.resolver
@@ -475,7 +475,7 @@ class DomainFeatureTests(unittest.TestCase):
             domains.record_report(domain_id, domain_report())
         self.authenticate_as(self.client,1)
         monitor.app.config['WTF_CSRF_ENABLED'] = False
-        self.assertEqual(self.client.get('/domains/providers').status_code,200)
+        self.assertEqual(self.client.get('/domains/providers').status_code,302)
         self.client.post('/domains/providers', data={'dbl':'on'})
         self.assertFalse(domains.provider_settings().get('dbl'))
         self.client.post('/domains/providers', data={})
@@ -516,6 +516,113 @@ class DomainFeatureTests(unittest.TestCase):
         with patch.object(domains,'run_domain') as run, patch.object(domains,'deliver_domain_alerts'):
             domains.run_domains()
             run.assert_called_once_with(domain_id)
+
+
+class SettingsPageTests(unittest.TestCase):
+    setUp = MonitorTests.setUp
+    authenticate_as = MonitorTests.authenticate_as
+    add_test_user = MonitorTests.add_test_user
+
+    def payload(self):
+        from werkzeug.datastructures import MultiDict
+        form = MultiDict(dict(settings_scope='all', interval='45', timeout='3',
+                         smtp_host='', smtp_port='587', smtp_security='starttls',
+                         smtp_username='', smtp_password='', smtp_from='', recipients=''))
+        for row in ext.effective_rbls():
+            form.add('rbl_zone',row['zone'])
+            form['rbl_link:'+row['zone']] = ''
+            if row.get('enabled',True):
+                form['rbl_enabled:'+row['zone']] = 'on'
+        return form
+
+    def admin(self):
+        self.authenticate_as(self.client,1)
+        monitor.app.config['WTF_CSRF_ENABLED'] = False
+
+    def test_single_page_and_legacy_redirects(self):
+        self.admin()
+        response = self.client.get('/admin/settings')
+        self.assertEqual(response.status_code,200)
+        self.assertIn(b'settings_scope',response.data)
+        for path, anchor in (('/admin/smtp','#smtp'),('/admin/rbls','#ip-rbls'),('/domains/providers','#domains')):
+            response = self.client.get(path)
+            self.assertEqual(response.status_code,302)
+            self.assertTrue(response.location.endswith('/admin/settings'+anchor))
+
+    def test_save_all_categories_and_preserve_secrets(self):
+        self.admin()
+        with domains.connection() as conn:
+            ext.set_setting(conn,'smtp_password','storedSecret')
+            ext.set_setting(conn,'spamhaus_dqs_key','storedToken')
+        data = self.payload()
+        for key, val in dict(smtp_host='smtp.example.com', smtp_from='monitor@example.com',
+                    recipients='admin@example.com', alert_enabled='on',
+                    domain_uribl='on', domain_access_confirmed='on').items():
+            data[key] = val
+        response = self.client.post('/admin/settings',data=data)
+        self.assertEqual(response.status_code,302)
+        self.assertEqual(ext.get_setting('check_interval_minutes'),'45')
+        self.assertEqual(ext.get_setting('smtp_host'),'smtp.example.com')
+        self.assertTrue(domains.provider_settings()['uribl'])
+        self.assertEqual(ext.get_setting('smtp_password'),'storedSecret')
+        self.assertEqual(ext.get_setting('spamhaus_dqs_key'),'storedToken')
+        response = self.client.get('/admin/settings')
+        self.assertNotIn(b'storedSecret',response.data)
+        self.assertNotIn(b'storedToken',response.data)
+
+    def test_invalid_category_saves_nothing_and_preserves_nonsecret_edits(self):
+        self.admin()
+        data = self.payload()
+        for key, val in dict(smtp_host='smtp.example.com', smtp_port='99999',
+                    smtp_password='neverEchoSecret', domain_uribl='on').items():
+            data[key] = val
+        response = self.client.post('/admin/settings',data=data)
+        self.assertEqual(response.status_code,200)
+        self.assertNotIn(b'neverEchoSecret',response.data)
+        self.assertIn(b'smtp.example.com',response.data)
+        with domains.connection() as conn:
+            self.assertEqual(conn.execute('SELECT COUNT(*) FROM settings').fetchone()[0],0)
+
+    def test_nan_partial_or_stale_forms_rejected(self):
+        self.admin()
+        for field,bad in (('timeout','NaN'),('settings_scope',''),('rbl_zone','unknown.example.com')):
+            data = self.payload()
+            data[field] = bad
+            self.assertEqual(self.client.post('/admin/settings',data=data).status_code,200)
+            self.assertEqual(ext.get_setting('check_interval_minutes'),'')
+
+    def test_optional_rbl_saved_in_same_transaction(self):
+        self.admin()
+        data = self.payload()
+        data['new_rbl_name'] = 'Example RBL'
+        data['new_rbl_zone'] = 'dnsbl.example.com'
+        self.assertEqual(self.client.post('/admin/settings',data=data).status_code,302)
+        source = next(row for row in ext.effective_rbls() if row['zone']=='dnsbl.example.com')
+        self.assertFalse(source['enabled'])
+
+    def test_ip_actions_are_local_to_ip_area(self):
+        self.admin()
+        self.assertIn(b'+ Adicionar IP',self.client.get('/').data)
+        for path in ('/domains/','/admin/settings','/admin/users','/account'):
+            response = self.client.get(path)
+            self.assertEqual(response.status_code,200)
+            self.assertNotIn(b'+ Adicionar IP',response.data)
+            self.assertNotIn(b'Verificar todos os IPs',response.data)
+
+    def test_configuration_permissions_and_csrf(self):
+        self.assertEqual(self.client.get('/admin/settings').status_code,302)
+        self.authenticate_as(self.client,self.add_test_user())
+        self.assertEqual(self.client.get('/admin/settings').status_code,403)
+        self.authenticate_as(self.client,1)
+        self.assertEqual(self.client.post('/admin/settings',data=self.payload()).status_code,400)
+
+    def test_database_failure_rolls_back_all_categories(self):
+        self.admin()
+        with patch.object(ext,'close_disabled_incidents',side_effect=RuntimeError('simulated failure')):
+            with self.assertRaises(RuntimeError):
+                self.client.post('/admin/settings',data=self.payload())
+        with domains.connection() as conn:
+            self.assertEqual(conn.execute('SELECT COUNT(*) FROM settings').fetchone()[0],0)
 
 
 if __name__ == '__main__':

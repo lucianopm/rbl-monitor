@@ -1,6 +1,6 @@
 {% extends 'base.html' %}{% block content %}
 <section class="hero"><div class="eyebrow">REPUTAÇÃO E CONFIGURAÇÃO DNS</div><h1>Domínios</h1><p>Monitore seus domínios ou faça uma análise pontual sem cadastrá-los.</p></section>
-<div class="actions">{% if user.is_admin %}<a class="btn" href="{{ url_for('domains.providers') }}">Configurar listas de domínio</a><a class="btn" href="{{ url_for('settings') }}">Intervalo de monitoramento</a>{% endif %}</div>
+{% if user.is_admin %}<div class="actions"><a class="btn" href="{{ url_for('settings', _anchor='domains') }}">Configurações de domínios</a></div>{% endif %}
 <div class="domain-columns">
 <section class="panel user-edit-form"><h2>Consulta pontual</h2><p>Para domínios próprios ou de terceiros. Não salva relatório, não cadastra e não gera alertas.</p>
 <form method="post" action="{{ url_for('domains.lookup') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><label>Domínio<input name="domain" placeholder="example.com" maxlength="253" required></label><label>Seletor DKIM (opcional)<input name="selector" placeholder="selector1" maxlength="100"></label><button class="btn primary">Analisar agora</button></form></section>

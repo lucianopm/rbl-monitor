@@ -185,3 +185,12 @@
 .rbl-retry-form{display:block;margin-top:10px}
 .rbl-retry-button{font-size:11px;padding:7px 11px;max-width:100%;white-space:normal;text-align:left;line-height:1.35}
 .retry-history-type{display:block;max-width:220px;overflow-wrap:anywhere;line-height:1.4}
+.area-actions,.settings-categories{display:flex;gap:12px;flex-wrap:wrap;margin:20px 0;align-items:center}
+.area-actions form{margin:0}
+.settings-category{margin:22px 0;scroll-margin-top:20px}
+.settings-fields{padding:20px}
+.settings-fields label{display:flex;flex-direction:column;gap:8px}
+.settings-fields label.check{flex-direction:row;align-items:center}
+.provider-option{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;padding:12px 0}
+.settings-save-bar{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;padding:18px;background:var(--panel,#101720);border:1px solid var(--border,#243342);border-radius:12px}
+.nav-actions a[aria-current="page"]{border-color:var(--accent);color:var(--accent)}

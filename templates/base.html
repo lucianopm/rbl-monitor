@@ -12,15 +12,10 @@
     <a class="brand" href="{{ url_for('index') }}">RBL <span>MONITOR</span></a>
     <div class="nav-actions">
       {% if user %}
-      <a class="btn" href="{{ url_for('index') }}">IPs</a>
-      <a class="btn" href="{{ url_for('domains.index') }}">Domínios</a>
-      <a href="{{ url_for('new_ip') }}" class="btn primary">+ Adicionar IP</a>
-      <form method="post" action="{{ url_for('check_all') }}" style="display:inline">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button class="btn" type="submit">Verificar todos</button>
-      </form>
-      {% if user.is_admin %}<a class="btn" href="{{ url_for('settings') }}">Configurações</a><a class="btn" href="{{ url_for('smtp_settings') }}">SMTP e alertas</a><a class="btn" href="{{ url_for('users') }}">Usuários</a><a class="btn" href="{{ url_for('rbls') }}">RBLs</a>{% endif %}
-      <a class="btn" href="{{ url_for('account') }}">Minha senha</a>
+      <a class="btn" href="{{ url_for('index') }}" {% if request.endpoint in ['index','ip_detail','new_ip','edit_ip'] %}aria-current="page"{% endif %}>IPs</a>
+      <a class="btn" href="{{ url_for('domains.index') }}" {% if request.blueprint == 'domains' %}aria-current="page"{% endif %}>Domínios</a>
+      {% if user.is_admin %}<a class="btn" href="{{ url_for('settings') }}" {% if request.endpoint == 'settings' %}aria-current="page"{% endif %}>Configurações</a><a class="btn" href="{{ url_for('users') }}">Usuários</a>{% endif %}
+      <a class="btn" href="{{ url_for('account') }}">Minha conta</a>
       <form method="post" action="{{ url_for('logout') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn">Sair</button></form>
       {% else %}<a class="btn" href="{{ url_for('login') }}">Entrar</a>{% endif %}
     </div>

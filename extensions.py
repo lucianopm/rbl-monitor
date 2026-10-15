@@ -547,27 +547,14 @@ def setup(app, db_factory, config, rbl_file, run_one, run_all, retry_one=None):
     @app.route("/admin/settings", methods=["GET", "POST"])
     @admin_required
     def settings():
-        if request.method == "POST":
-            try:
-                interval = int(request.form.get("interval", ""))
-                timeout = float(request.form.get("timeout", ""))
-                if not 1 <= interval <= 10080 or not 0.5 <= timeout <= 30:
-                    raise ValueError()
-                with _db() as conn:
-                    set_setting(conn, "check_interval_minutes", interval)
-                    set_setting(conn, "dns_timeout_seconds", timeout)
-                schedule_changed.set()
-                flash("Configurações de monitoramento salvas.", "success")
-                return redirect(url_for("settings"))
-            except (ValueError, OverflowError):
-                flash("Confira o intervalo e o timeout.", "error")
-        return render_template("settings.html",
-            interval=get_setting("check_interval_minutes", int(float(config.get("check_interval_hours", 24)) * 60)),
-            timeout=get_setting("dns_timeout_seconds", config.get("dns_timeout_seconds", 4)))
+        from settings_ui import page
+        return page(_db, config)
 
     @app.route("/admin/smtp", methods=["GET", "POST"])
     @admin_required
     def smtp_settings():
+        if request.method == "GET":
+            return redirect(url_for("settings", _anchor="smtp"))
         if request.method == "POST":
             host = request.form.get("smtp_host", "").strip()
             sender = request.form.get("smtp_from", "").strip()
@@ -653,10 +640,12 @@ def setup(app, db_factory, config, rbl_file, run_one, run_all, retry_one=None):
             # Não registrar mensagens do servidor SMTP, pois podem conter credenciais.
             logger.warning("Teste SMTP falhou: %s", type(exc).__name__)
             flash("Falha ao enviar teste SMTP: " + type(exc).__name__ + ". Confira endereço, porta, autenticação e TLS.", "error")
-        return redirect(url_for("smtp_settings"))
+        return redirect(url_for("settings", _anchor="smtp"))
     @app.route("/admin/rbls", methods=["GET", "POST"])
     @admin_required
     def rbls():
+        if request.method == "GET":
+            return redirect(url_for("settings", _anchor="ip-rbls"))
         if request.method == "POST":
             action = request.form.get("action", "")
             if action == "save_all":

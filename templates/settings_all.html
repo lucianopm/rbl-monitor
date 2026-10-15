@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% macro value(name, default='') %}{{ form.get(name, default) if form is not none else default }}{% endmacro %}
+{% macro checked(name, default=false) %}{% if (form is not none and name in form) or (form is none and default) %}checked{% endif %}{% endmacro %}
+{% block content %}
+<section class="hero"><div class="eyebrow">ADMINISTRAÇÃO</div><h1>Configurações</h1><p>Um único local para configurar as consultas e os alertas. Use Salvar todas as configurações ao terminar.</p></section>
+<nav class="settings-categories" aria-label="Categorias de configurações">
+  <a class="btn" href="#ip-rbls">RBL de IP</a><a class="btn" href="#domains">Domínios</a>
+  <a class="btn" href="#smtp">SMTP e alertas</a><a class="btn" href="#timing">Tempo de testes</a>
+</nav>
+<form method="post" action="{{ url_for('settings') }}" autocomplete="off" class="unified-settings">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <input type="hidden" name="settings_scope" value="all">
+  <section id="ip-rbls" class="panel settings-category">
+    <div class="panel-head"><div><h2>RBL de IP</h2><p>Selecione as listas e configure os links e as credenciais.</p></div></div>
+    <div class="settings-fields key-grid">
+      <label>Chave SpamRATS {{ '— configurada' if spamrats_configured else '' }}
+        <input type="password" name="spamrats_api_key" autocomplete="new-password" placeholder="Vazio mantém a chave atual">
+        <span class="smtp-checkbox-line"><input type="checkbox" name="remove_spamrats_api_key" {{ checked('remove_spamrats_api_key') }}> Remover chave</span>
+      </label>
+      <label>Chave Spamhaus DQS {{ '— configurada' if spamhaus_configured else '' }}
+        <input type="password" name="spamhaus_dqs_key" autocomplete="new-password" placeholder="Compartilhada por ZEN e DBL; vazio mantém">
+        <span class="smtp-checkbox-line"><input type="checkbox" name="remove_spamhaus_dqs_key" {{ checked('remove_spamhaus_dqs_key') }}> Remover chave</span>
+      </label>
+    </div>
+    <div class="table-wrap"><table class="rbl-table"><thead><tr><th>Lista</th><th>Consulta / delisting</th><th>Ativa</th><th>IPv6</th></tr></thead><tbody>
+    {% for rbl in rbls %}<tr>
+      <td><input type="hidden" name="rbl_zone" value="{{ rbl.zone }}"><strong>{{ rbl.name }}</strong><br><small>{{ rbl.zone }}</small></td>
+      <td><input type="url" name="rbl_link:{{ rbl.zone }}" value="{{ value('rbl_link:'~rbl.zone, delisting_url(rbl.zone)) }}" maxlength="1000" aria-label="Link {{ rbl.name }}"></td>
+      <td><input type="checkbox" name="rbl_enabled:{{ rbl.zone }}" {{ checked('rbl_enabled:'~rbl.zone, rbl.enabled) }} aria-label="Ativar {{ rbl.name }}"></td>
+      <td><input type="checkbox" name="rbl_ipv6:{{ rbl.zone }}" {{ checked('rbl_ipv6:'~rbl.zone, rbl.supports_ipv6|default(false)) }} aria-label="IPv6 {{ rbl.name }}"></td>
+    </tr>{% endfor %}</tbody></table></div>
+    <details class="settings-fields"><summary>Adicionar uma RBL personalizada</summary><p>Opcional. Será adicionada desativada junto com o salvamento geral.</p>
+      <div class="key-grid"><label>Nome<input name="new_rbl_name" maxlength="120" value="{{ value('new_rbl_name') }}"></label><label>Zona DNS<input name="new_rbl_zone" maxlength="253" value="{{ value('new_rbl_zone') }}" placeholder="example.dnsbl.net"></label></div>
+    </details>
+    <p class="settings-fields">Desativar uma lista encerra seus alertas operacionais sem apagar o histórico. Chaves nunca são exibidas; em caso de erro, preencha novamente as novas credenciais.</p>
+  </section>
+  <section id="domains" class="panel settings-category">
+    <div class="panel-head"><div><h2>Domínios</h2><p>Listas independentes das RBLs de IP, desativadas inicialmente.</p></div></div>
+    <div class="settings-fields">
+      {% for key, source in providers.items() %}
+      <div class="provider-option"><label class="check"><input type="checkbox" name="domain_{{ key }}" {{ checked('domain_'~key, configured.get(key)) }}> {{ source.name }}</label>
+      <a class="link" href="{{ source.link }}" target="_blank" rel="noopener noreferrer">Condições de acesso ↗</a></div>
+      {% endfor %}
+      <p>DBL usa a chave DQS acima. URIBL e SURBL podem exigir acesso específico, contrato ou resolvedor autorizado. Falhas de acesso não são resultados limpos.</p>
+      <label class="check"><input type="checkbox" name="domain_access_confirmed" {{ checked('domain_access_confirmed', configured.values()|select|list|length > 0) }}> Conferi as condições de acesso às listas de domínio habilitadas.</label>
+    </div>
+  </section>
+  <section id="smtp" class="panel settings-category">
+    <div class="panel-head"><div><h2>SMTP e alertas</h2><p>Configuração compartilhada pelos alertas de IPs e domínios.</p></div></div>
+    <div class="smtp-form-grid">
+      <label>Servidor<input name="smtp_host" maxlength="253" value="{{ value('smtp_host', smtp.host) }}" placeholder="smtp.example.com"></label>
+      <label>Porta<input name="smtp_port" type="number" min="1" max="65535" value="{{ value('smtp_port', smtp.port) }}" required></label>
+      <label>Segurança<select name="smtp_security">{% for code,label in [('starttls','STARTTLS'),('ssl','SSL/TLS direto'),('none','Sem TLS — somente rede confiável')] %}<option value="{{ code }}" {% if value('smtp_security',smtp.security)|trim == code %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></label>
+      <label>Usuário<input name="smtp_username" maxlength="254" value="{{ value('smtp_username',smtp.username) }}" autocomplete="off"></label>
+      <label>Senha {{ '— configurada' if password_configured else '' }}<input type="password" name="smtp_password" autocomplete="new-password" maxlength="1024" placeholder="Vazio mantém a senha atual">
+        <span class="smtp-checkbox-line"><input type="checkbox" name="clear_smtp_password" {{ checked('clear_smtp_password') }}> Remover senha</span>
+      </label>
+      <label>Remetente<input type="email" name="smtp_from" maxlength="254" value="{{ value('smtp_from',smtp.sender) }}"></label>
+      <label class="smtp-span-2">Destinatários<textarea name="recipients" rows="3">{{ value('recipients',recipients) }}</textarea><span class="field-hint">Separe por vírgula, ponto e vírgula ou quebra de linha.</span></label>
+      <label class="check smtp-span-2"><input type="checkbox" name="alert_enabled" {{ checked('alert_enabled',alerts_active) }}> Ativar alertas automáticos de novas listagens</label>
+      <p class="smtp-span-2">SMTP pode ficar vazio quando os alertas estiverem desativados. Salve antes de usar o teste de envio no final da página.</p>
+    </div>
+  </section>
+  <section id="timing" class="panel settings-category">
+    <div class="panel-head"><div><h2>Tempo de testes</h2><p>Agendamento compartilhado pelos IPs e domínios monitorados. Consultas pontuais não entram no agendamento.</p></div></div>
+    <div class="settings-fields key-grid">
+      <label>Intervalo entre verificações (minutos)<input name="interval" type="number" min="1" max="10080" value="{{ value('interval',interval) }}" required></label>
+      <label>Timeout DNS (segundos)<input name="timeout" type="number" min="0.5" max="30" step="0.5" value="{{ value('timeout',timeout) }}" required></label>
+    </div>
+    <p class="settings-fields">Consultas de domínio usam no máximo 8 segundos por operação DNS. O timeout não é a duração total de uma análise.</p>
+  </section>
+  <div class="settings-save-bar"><span>As quatro categorias serão validadas e salvas juntas.</span><button class="btn primary" type="submit">Salvar todas as configurações</button></div>
+</form>
+<section class="panel settings-category"><div class="panel-head"><h2>Teste de envio SMTP</h2></div>
+  <div class="settings-fields"><p>Usa somente a configuração já salva. Não salva edições e não altera a fila de alertas.</p>
+    <form method="post" action="{{ url_for('test_email') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button type="submit" class="btn">Enviar e-mail de teste</button></form>
+  </div>
+</section>
+{% endblock %}
