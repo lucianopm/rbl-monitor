@@ -15,6 +15,7 @@ from urllib.parse import urlsplit
 from flask import abort, flash, g, redirect, render_template, request, session, url_for
 from flask_wtf.csrf import CSRFProtect
 from werkzeug.security import check_password_hash, generate_password_hash
+from version_info import build_label
 
 schedule_changed = threading.Event()
 _jobs = ThreadPoolExecutor(max_workers=1, thread_name_prefix="manual-check")
@@ -349,7 +350,8 @@ def setup(app, db_factory, config, rbl_file, run_one, run_all, retry_one=None):
     app.jinja_env.globals["delisting_url"] = delisting_url
     @app.context_processor
     def context():
-        return {"user": g.get("user"), "timezone_name": os.getenv("TZ", "America/Sao_Paulo")}
+        return {"user": g.get("user"), "timezone_name": os.getenv("TZ", "America/Sao_Paulo"),
+                "app_version": build_label()}
     @app.get("/health")
     def health():
         try:

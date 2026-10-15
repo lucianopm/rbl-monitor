@@ -4,6 +4,8 @@
 !.env.example
 .git-update.conf
 .git-version
+.git-channel
+.git-channel.next
 .update.lock
 *.pem
 *.key

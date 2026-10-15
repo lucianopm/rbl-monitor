@@ -2,6 +2,8 @@
 
 ## Acesso e níveis
 
+O rodapé exibe a versão do pacote. Após atualização pelo Git, mostra também canal (main/dev) e commit, para identificar precisamente o código instalado. Instalações novas por ZIP mostram somente VERSION até a primeira atualização Git. Versões com sufixo `-dev` ainda não foram lançadas como release; não equivalem ao release estável anterior.
+
 Em **Usuários**, administradores podem alterar o perfil de outra conta (Operador/Administrador), redefinir sua senha com confirmação, ativar/desativar e excluir usuários. A exclusão exige confirmação na interface, é definitiva e não apaga IPs, histórico ou observações. Não é permitido excluir/desativar/rebaixar a própria conta por esse painel, nem remover a última conta administrativa ativa. Para a própria senha use **Minha senha**. Alterações de senha, perfil ou estado invalidam sessões antigas da conta afetada. Senhas precisam de pelo menos 10 caracteres; redefinir senha não reativa uma conta desativada (use Ativar).
 
 A página inicial e os detalhes dos IPs podem ser consultados por visitantes. Um visitante também pode solicitar nova verificação de um IP ativo ou uma nova tentativa de uma RBL com erro. Esses pedidos estão protegidos por CSRF e limitados por frequência (global e por IP). Operações de cadastro, configuração e administração exigem autenticação. As opções de ignorar/encerrar alertas exigem administrador.

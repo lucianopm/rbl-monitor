@@ -175,6 +175,19 @@ class MonitorTests(unittest.TestCase):
         for name in monitor.app.jinja_env.list_templates():
             monitor.app.jinja_env.get_template(name)
 
+    def test_footer_version_and_safe_build_metadata(self):
+        from version_info import build_label
+        html = self.client.get('/login').get_data(as_text=True)
+        self.assertIn('v1.3.0-dev', html)
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            (base / 'VERSION').write_text('1.3.0-dev', encoding='utf-8')
+            (base / '.git-version').write_text('abcdef1234567890', encoding='utf-8')
+            (base / '.git-channel').write_text('dev', encoding='utf-8')
+            self.assertEqual(build_label(base), 'v1.3.0-dev · dev · abcdef123456')
+            (base / 'VERSION').write_text('<script>invalid</script>', encoding='utf-8')
+            self.assertNotIn('<script>', build_label(base))
+
     def test_cli_password_reset_preserves_data(self):
         import importlib.util
         from werkzeug.security import check_password_hash
