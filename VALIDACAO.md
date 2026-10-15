@@ -2,6 +2,8 @@
 
 ## Área Domínios — 15/10/2026 (em desenvolvimento)
 
+A retenção de backups passou em oito testes isolados adicionais: simulação sem exclusão, cinco mais recentes por nome, proteção do rollback com mudança de relógio, preservação de pastas desconhecidas/incompletas, idempotência, rejeição de raiz com symlink, preservação de snapshot com link interno e recusa de destino protegido externo. Nenhum backup real foi removido durante a validação.
+
 Após os ajustes de lote/DKIM/layout, 62 testes passaram. Os 12 testes adicionais cobrem descoberta limitada e múltiplos seletores, inconclusão, timeouts e achados parciais, seletor explícito, rejeição de chaves revogadas/duplicadas, autenticação/CSRF e limite da verificação em lote, exclusão de pausados, proporções de colunas e destaque de credenciais sem expor os valores. DNS segue simulado: disponibilidade de provedores e descoberta em domínios reais não foram homologadas no servidor.
 
 Após a reorganização do menu e das configurações, 50 testes passaram. Os oito novos testes cobrem página única/redirecionamentos, salvamento conjunto, preservação de segredos, rejeição sem gravação parcial, rollback em falha simulada de banco, números inválidos e formulários incompletos, inclusão de RBL no mesmo salvamento, ações de IP fora do menu global e acesso administrativo/CSRF.

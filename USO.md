@@ -67,3 +67,21 @@ O botão **Salvar todas as configurações** valida e grava as quatro categorias
 ## Domínios
 
 A área Domínios oferece dois fluxos independentes: cadastro para monitoramento automático com histórico/alertas e consulta pontual sem cadastro ou gravação do relatório. Veja [DOMINIOS.md](DOMINIOS.md) para configurar listas, interpretar resultados e entender as limitações de SPF, DMARC e DKIM.
+
+## Retenção dos backups de atualização
+
+Após atualização bem-sucedida, o atualizador mantém os cinco snapshots mais recentes em backups/, pelo horário do nome da pasta. O backup da atualização atual fica protegido para rollback, inclusive se o relógio do servidor tiver mudado. Uma atualização com falha não dispara limpeza. Somente pastas reconhecidas do atualizador, com app-before.tar e sem links simbólicos, participam da retenção; pastas manuais ou incompletas ficam intactas.
+
+Para conferir os backups antigos que seriam removidos, na pasta da instalação:
+
+```bash
+sudo python3 ./cleanup_backups.py
+```
+
+Para executar a limpeza agora:
+
+```bash
+sudo python3 ./cleanup_backups.py --apply
+```
+
+A remoção é definitiva e inclui banco, configurações e código dentro dos snapshots excedentes. Não toca na instalação ativa. Mova para fora de backups/ qualquer cópia que precise arquivar. Ao instalar esta melhoria a partir de um atualizador antigo, execute a limpeza manual uma vez, se necessário; as próximas atualizações já farão a retenção automaticamente.

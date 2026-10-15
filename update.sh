@@ -36,6 +36,7 @@ tenta reverter o código/dependências se houver falha.
 Por padrão usa https://github.com/lucianopm/rbl-monitor.git (main).
 Uma origem salva em .git-update.conf ou --repo pode substituir esse padrão.
 Detecta a instalação na pasta do próprio script; backups ficam em backups/.
+Após uma atualização bem-sucedida, mantém somente os cinco backups mais recentes.
 Somente execute com repositórios Git de origem confiável.
 HELP
 }
@@ -275,4 +276,10 @@ chmod 0644 "$APP_DIR/.git-channel.next"
 mv -f "$APP_DIR/.git-channel.next" "$APP_DIR/.git-channel"
 COMPLETE=1
 rm -rf -- "$APP_DIR/.venv.previous"
+log 'Mantendo os cinco backups mais recentes'
+if [[ -f "$APP_DIR/cleanup_backups.py" && ! -L "$APP_DIR/cleanup_backups.py" ]]; then
+ if ! python3 "$APP_DIR/cleanup_backups.py" --apply --protect "$BACKUP"; then
+  echo 'AVISO: atualização concluída, mas a limpeza dos backups falhou. Confira backups/ manualmente.' >&2
+ fi
+fi
 log "Atualização concluída (Git $COMMIT). Backup mantido em $BACKUP"
