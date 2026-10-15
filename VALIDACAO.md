@@ -1,5 +1,9 @@
 # Validação da entrega — 13/10/2026
 
+## Publicação em main — v1.4.0 — 15/10/2026
+
+Suíte completa: 70 testes aprovados (62 da aplicação e oito de retenção de backups), com SQLite isolado e DNS/SMTP simulados. A versão validada em dev foi incorporada à main com VERSION=1.4.0. A publicação de código não executou atualização no servidor nem criou release/ZIP. A implantação Linux/systemd e as consultas reais aos provedores continuam dependentes de homologação.
+
 ## Área Domínios — 15/10/2026 (em desenvolvimento)
 
 A retenção de backups passou em oito testes isolados adicionais: simulação sem exclusão, cinco mais recentes por nome, proteção do rollback com mudança de relógio, preservação de pastas desconhecidas/incompletas, idempotência, rejeição de raiz com symlink, preservação de snapshot com link interno e recusa de destino protegido externo. Nenhum backup real foi removido durante a validação.

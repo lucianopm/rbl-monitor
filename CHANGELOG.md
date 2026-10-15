@@ -1,6 +1,6 @@
 # Alterações
 
-## Em desenvolvimento — 15/10/2026
+## v1.4.0 — 15/10/2026
 
 - Retenção automática dos cinco snapshots mais recentes após atualização saudável; backup atual protegido e limpeza manual com simulação por padrão.
 
